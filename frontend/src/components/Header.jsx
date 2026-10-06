@@ -63,8 +63,12 @@ function NavLink({ link, onClick, mobile = false }) {
   )
 }
 
+const ACCOUNT_PATHS = ['/login', '/register']
+
 function Header() {
   const [menuOpen, setMenuOpen] = useState(false)
+  const onAccountPage = ACCOUNT_PATHS.includes(useLocation().pathname)
+  const accountColors = onAccountPage ? 'text-brand' : 'text-ink hover:text-brand'
   const closeMenu = () => setMenuOpen(false)
 
   return (
@@ -84,14 +88,14 @@ function Header() {
                 </li>
               ))}
               <li>
-                {/* Placeholder: will open login / student account later */}
-                <button
-                  type="button"
+                <Link
+                  to="/login"
                   aria-label="User account"
-                  className="ml-1 flex cursor-pointer items-center rounded-full p-2 text-2xl text-ink transition hover:text-brand"
+                  aria-current={onAccountPage ? 'page' : undefined}
+                  className={`ml-1 flex items-center rounded-full p-2 text-2xl transition ${accountColors}`}
                 >
                   <FaCircleUser aria-hidden="true" />
-                </button>
+                </Link>
               </li>
             </ul>
           </nav>
@@ -121,14 +125,15 @@ function Header() {
                 </li>
               ))}
               <li>
-                <button
-                  type="button"
+                <Link
+                  to="/login"
                   onClick={closeMenu}
-                  className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-4 py-3 font-medium text-ink transition hover:bg-brand-soft hover:text-brand"
+                  aria-current={onAccountPage ? 'page' : undefined}
+                  className={`flex items-center gap-2 rounded-lg px-4 py-3 font-medium transition hover:bg-brand-soft ${accountColors}`}
                 >
                   <FaCircleUser aria-hidden="true" />
                   My Account
-                </button>
+                </Link>
               </li>
             </ul>
           </nav>
