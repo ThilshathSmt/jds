@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+/* Jeslan Driving School brand tokens: red primary, white secondary */
+@theme {
+  --font-sans: "Poppins", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --color-brand: #d6202a;
+  --color-brand-dark: #a8141c;
+  --color-brand-deep: #6e0c12;
+  --color-brand-soft: #fdecec;
+  --color-ink: #1b1b1f;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-white font-sans text-ink antialiased;
+  }
+
+  /* Keep anchored sections clear of the sticky navbar */
+  section[id],
+  footer[id] {
+    scroll-margin-top: 5rem;
+  }
+
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-brand;
+  }
+}
+
+@layer components {
+  .container-page {
+    @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
+
+  .btn {
+    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold transition duration-200 sm:text-base;
+  }
+
+  .btn-primary {
+    @apply bg-brand text-white shadow-md shadow-brand/30 hover:bg-brand-dark;
+  }
+
+  .btn-outline {
+    @apply border-2 border-brand bg-white text-brand hover:bg-brand hover:text-white;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
