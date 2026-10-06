@@ -43,7 +43,7 @@ export const navLinks = [
   { label: 'Gallery', to: '/#gallery', icon: FaImages },
   // The footer (#contact) is on every page, so this stays on the current page
   { label: 'Contact Us', to: '#contact', icon: FaPhone },
-  { label: 'Apply Now', to: '/register', icon: FaPenToSquare, highlight: true },
+  { label: 'Apply Now', to: '/apply', icon: FaPenToSquare, highlight: true },
 ]
 
 export const features = [

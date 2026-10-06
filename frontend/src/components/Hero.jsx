@@ -22,7 +22,7 @@ function Hero() {
           </p>
 
           <div className="mt-8 flex flex-col justify-center gap-4 sm:flex-row lg:justify-start">
-            <Link to="/register" className="btn btn-primary">
+            <Link to="/apply" className="btn btn-primary">
               Apply Now
               <FaArrowRight aria-hidden="true" />
             </Link>

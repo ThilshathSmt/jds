@@ -1,0 +1,24 @@
+// Frontend validation for the account login / register forms.
+// Each function returns { field: message }; an empty object means the form is valid.
+// TODO: The backend must repeat these checks when authentication is connected.
+
+import { isValidEmail } from './registrationValidation'
+
+export const validateLogin = ({ schoolId, password }) => {
+  const errors = {}
+  if (!schoolId.trim()) errors.schoolId = 'Driving School Id is required.'
+  if (!password) errors.password = 'Password is required.'
+  return errors
+}
+
+export const validateRegister = ({ schoolId, name, email, password, confirmPassword }) => {
+  const errors = {}
+  if (!schoolId.trim()) errors.schoolId = 'Driving School Id is required.'
+  if (!name.trim()) errors.name = 'Your name is required.'
+  if (!email.trim()) errors.email = 'E-mail address is required.'
+  else if (!isValidEmail(email.trim())) errors.email = 'Enter a valid email address.'
+  if (!password) errors.password = 'Password is required.'
+  if (!confirmPassword) errors.confirmPassword = 'Please confirm your password.'
+  else if (confirmPassword !== password) errors.confirmPassword = 'Passwords do not match.'
+  return errors
+}
