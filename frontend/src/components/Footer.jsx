@@ -1,4 +1,5 @@
 import { FaEnvelope, FaLocationDot, FaPhone } from 'react-icons/fa6'
+import { Link } from 'react-router-dom'
 import Logo from './Logo'
 import { contactInfo, footerLinkGroups, legalLinks, socialLinks } from '../data/siteData'
 
@@ -31,11 +32,11 @@ function Footer() {
           <nav key={title} aria-label={title}>
             <h2 className={headingClass}>{title}</h2>
             <ul className="space-y-2.5">
-              {links.map(({ label, href }) => (
+              {links.map(({ label, to }) => (
                 <li key={label}>
-                  <a href={href} className={linkClass}>
+                  <Link to={to} className={linkClass}>
                     {label}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>

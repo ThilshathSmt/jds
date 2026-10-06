@@ -37,12 +37,13 @@ export const socialLinks = [
   { label: 'Instagram', href: '#instagram', icon: FaInstagram },
 ]
 
-// Links that point to sections which do not exist yet (e.g. #gallery, #apply) are placeholders.
+// `to` is a router path. Links to sections that do not exist yet (e.g. /#gallery) are placeholders.
 export const navLinks = [
-  { label: 'Home', href: '#home', icon: FaHouse, current: true },
-  { label: 'Gallery', href: '#gallery', icon: FaImages },
-  { label: 'Contact Us', href: '#contact', icon: FaPhone },
-  { label: 'Apply Now', href: '#apply', icon: FaPenToSquare, highlight: true },
+  { label: 'Home', to: '/', icon: FaHouse },
+  { label: 'Gallery', to: '/#gallery', icon: FaImages },
+  // The footer (#contact) is on every page, so this stays on the current page
+  { label: 'Contact Us', to: '#contact', icon: FaPhone },
+  { label: 'Apply Now', to: '/register', icon: FaPenToSquare, highlight: true },
 ]
 
 export const features = [
@@ -208,20 +209,20 @@ export const footerLinkGroups = [
   {
     title: 'Quick Links',
     links: [
-      { label: 'Home', href: '#home' },
-      { label: 'About Us', href: '#resources' },
-      { label: 'Courses', href: '#resources' },
-      { label: 'Gallery', href: '#gallery' },
-      { label: 'Contact Us', href: '#contact' },
+      { label: 'Home', to: '/' },
+      { label: 'About Us', to: '/#resources' },
+      { label: 'Courses', to: '/#resources' },
+      { label: 'Gallery', to: '/#gallery' },
+      { label: 'Contact Us', to: '#contact' },
     ],
   },
   {
     title: 'Resources',
     links: [
-      { label: 'Tutorials', href: '#resources' },
-      { label: 'Exam Papers', href: '#resources' },
-      { label: 'Packages', href: '#resources' },
-      { label: 'Student Portal', href: '#resources' },
+      { label: 'Tutorials', to: '/#resources' },
+      { label: 'Exam Papers', to: '/#resources' },
+      { label: 'Packages', to: '/#resources' },
+      { label: 'Student Portal', to: '/#resources' },
     ],
   },
 ]

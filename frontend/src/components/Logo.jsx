@@ -1,10 +1,11 @@
 // TODO: Replace src/assets/logo/jeslan-logo.svg with the official Jeslan Driving School logo.
 // If the official logo already contains the school name, pass showText={false}.
+import { Link } from 'react-router-dom'
 import logo from '../assets/logo/jeslan-logo.svg'
 
 function Logo({ light = false, showText = true }) {
   return (
-    <a href="#home" className="flex items-center gap-3" aria-label="Jeslan Driving School home">
+    <Link to="/" className="flex items-center gap-3" aria-label="Jeslan Driving School home">
       <img src={logo} alt="Jeslan Driving School logo" className="h-11 w-auto sm:h-12" />
       {showText && (
         <span className="leading-none whitespace-nowrap">
@@ -20,7 +21,7 @@ function Logo({ light = false, showText = true }) {
           </span>
         </span>
       )}
-    </a>
+    </Link>
   )
 }
 
