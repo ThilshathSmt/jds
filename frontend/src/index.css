@@ -44,6 +44,14 @@
     @apply bg-brand text-white shadow-md shadow-brand/30 hover:bg-brand-dark;
   }
 
+  .form-input {
+    @apply block w-full rounded-lg border border-gray-300 bg-gray-50 px-4 py-2.5 text-ink transition placeholder:text-gray-400 focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/20 focus:outline-none;
+  }
+
+  .form-input-error {
+    @apply border-brand bg-brand-soft/40;
+  }
+
   .btn-outline {
     @apply border-2 border-brand bg-white text-brand hover:bg-brand hover:text-white;
   }

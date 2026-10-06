@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { FaArrowRight, FaCircleCheck } from 'react-icons/fa6'
 // TODO: Replace with an official Jeslan Driving School image if available
 import heroImage from '../assets/images/hero-driving.svg'
@@ -20,12 +21,11 @@ function Hero() {
             Driving School.
           </p>
 
-          {/* Placeholder CTAs: the application flow will be connected later */}
           <div className="mt-8 flex flex-col justify-center gap-4 sm:flex-row lg:justify-start">
-            <a href="#apply" className="btn btn-primary">
+            <Link to="/register" className="btn btn-primary">
               Apply Now
               <FaArrowRight aria-hidden="true" />
-            </a>
+            </Link>
             <a href="#resources" className="btn btn-outline">
               Explore Courses
             </a>

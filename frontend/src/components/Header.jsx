@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 import { FaBars, FaCircleUser, FaLocationDot, FaPhone, FaXmark } from 'react-icons/fa6'
 import Logo from './Logo'
 import { contactInfo, navLinks, socialLinks } from '../data/siteData'
@@ -38,23 +39,27 @@ function TopBar() {
 }
 
 function NavLink({ link, onClick, mobile = false }) {
-  const { label, href, icon: Icon, current, highlight } = link
+  const { label, to, icon: Icon, highlight } = link
+  const current = useLocation().pathname === to
   const base = 'flex items-center gap-2 font-medium whitespace-nowrap transition'
   const layout = mobile ? 'rounded-lg px-4 py-3' : 'rounded-full px-4 py-2'
   let colors = 'text-ink hover:bg-brand-soft hover:text-brand'
-  if (highlight) colors = 'bg-brand text-white hover:bg-brand-dark'
+  if (highlight) {
+    colors = 'bg-brand text-white hover:bg-brand-dark'
+    if (current) colors += ' ring-2 ring-brand/40 ring-offset-2'
+  }
   else if (current) colors = 'text-brand'
 
   return (
-    <a
-      href={href}
+    <Link
+      to={to}
       onClick={onClick}
       aria-current={current ? 'page' : undefined}
       className={`${base} ${layout} ${colors}`}
     >
       <Icon aria-hidden="true" />
       {label}
-    </a>
+    </Link>
   )
 }
 
