@@ -2,7 +2,7 @@
 
 /* Jeslan Driving School brand tokens: red primary, white secondary */
 @theme {
-  --font-sans: "Poppins", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-sans: "Poppins", "Noto Sans Tamil", "Noto Sans Sinhala", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 
   --color-brand: #d6202a;
   --color-brand-dark: #a8141c;
