@@ -69,6 +69,7 @@ export const features = [
   },
 ]
 
+// `to` is set once a resource has its own page; cards without it are placeholders
 export const resources = [
   {
     title: 'About Us',
@@ -92,6 +93,7 @@ export const resources = [
     title: 'Exam Papers',
     description: 'Practice with driving theory questions',
     action: 'View Papers',
+    to: '/exam-papers',
     icon: FaFileLines,
   },
   {
@@ -220,7 +222,7 @@ export const footerLinkGroups = [
     title: 'Resources',
     links: [
       { label: 'Tutorials', to: '/#resources' },
-      { label: 'Exam Papers', to: '/#resources' },
+      { label: 'Exam Papers', to: '/exam-papers' },
       { label: 'Packages', to: '/#resources' },
       { label: 'Student Portal', to: '/#resources' },
     ],
