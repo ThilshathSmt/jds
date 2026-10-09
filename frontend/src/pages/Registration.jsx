@@ -5,6 +5,7 @@ import PersonalDetailsStep from '../components/registration/PersonalDetailsStep'
 import PackageDetailsStep from '../components/registration/PackageDetailsStep'
 import PaymentDetailsStep from '../components/registration/PaymentDetailsStep'
 import RegistrationSuccess from '../components/registration/RegistrationSuccess'
+import { submitApplication } from '../services/applicationApi'
 import { validateStep1, validateStep2, validateStep3 } from '../utils/registrationValidation'
 
 const stepValidators = { 1: validateStep1, 2: validateStep2, 3: validateStep3 }
@@ -28,6 +29,8 @@ function Registration() {
   // Steps 2 and 3 reveal their errors only after a failed attempt to continue
   const [showErrors, setShowErrors] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
 
   const errors = stepValidators[currentStep](formData)
   const StepComponent = stepComponents[currentStep]
@@ -40,7 +43,8 @@ function Registration() {
     window.scrollTo({ top: 0 })
   }
 
-  const handleNext = () => {
+  const handleNext = async () => {
+    if (submitting) return
     if (Object.keys(errors).length > 0) {
       setShowErrors(true)
       return
@@ -49,10 +53,20 @@ function Registration() {
       goToStep(currentStep + 1)
       return
     }
-    // TODO: Send formData (including the receipt file) to the backend registration API.
-    // Nothing leaves the browser yet: the success screen is shown immediately.
-    setSubmitted(true)
-    window.scrollTo({ top: 0 })
+
+    // Final step: send the application to the backend. This does not create a login
+    // account; the school reviews the application first.
+    setSubmitting(true)
+    setSubmitError('')
+    try {
+      await submitApplication(formData)
+      setSubmitted(true)
+      window.scrollTo({ top: 0 })
+    } catch (error) {
+      setSubmitError(error.message)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -76,6 +90,8 @@ function Registration() {
                   formData={formData}
                   errors={errors}
                   showErrors={showErrors}
+                  submitting={submitting}
+                  submitError={submitError}
                   onChange={updateField}
                   onBack={() => goToStep(currentStep - 1)}
                 />

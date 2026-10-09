@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom'
 import { FaRegCircleCheck } from 'react-icons/fa6'
 
-// Shown after the frontend-only submit. Nothing has been verified or approved at this point.
+// Shown once the backend has stored the application. It still awaits review by the school:
+// nothing has been approved and no login account exists yet.
 function RegistrationSuccess() {
   return (
     <div role="status" className="py-8 text-center">

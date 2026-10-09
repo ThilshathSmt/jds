@@ -4,8 +4,8 @@ import { receiptRules } from '../../data/registrationData'
 const formatSize = (bytes) =>
   bytes < 1024 * 1024 ? `${Math.ceil(bytes / 1024)} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 
-// The chosen File object is only kept in React state by the parent.
-// TODO: Connect receipt upload to backend/storage later
+// The chosen File object is kept in React state by the parent and uploaded with the
+// application when the form is submitted (see services/applicationApi.js).
 function FileUpload({ id, label, file, error, onChange }) {
   return (
     <div>

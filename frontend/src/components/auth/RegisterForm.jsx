@@ -1,12 +1,15 @@
+import { useNavigate } from 'react-router-dom'
 import AuthActions from './AuthActions'
 import AuthMessage from './AuthMessage'
 import CaptchaPlaceholder from './CaptchaPlaceholder'
 import useAuthForm from './useAuthForm'
 import FormField from '../registration/FormField'
+import { useAuth } from '../../context/useAuth'
 import { validateRegister } from '../../utils/authValidation'
 
 const initialValues = { schoolId: '', name: '', email: '', password: '', confirmPassword: '' }
 
+// There is deliberately no role field: the backend assigns the role from the Driving School ID
 const fields = [
   { name: 'schoolId', label: 'Driving School Id', type: 'text', autoComplete: 'username' },
   { name: 'name', label: 'Your Name', type: 'text', autoComplete: 'name' },
@@ -22,10 +25,18 @@ const fields = [
 ]
 
 function RegisterForm() {
-  // TODO: On a valid submit, call the backend account-registration API.
-  const { errors, isValidSubmit, inputProps, handleSubmit } = useAuthForm(
+  const { register } = useAuth()
+  const navigate = useNavigate()
+
+  const createAccount = async (values) => {
+    await register(values)
+    navigate('/login', { state: { registered: true } })
+  }
+
+  const { errors, formError, submitting, inputProps, handleSubmit } = useAuthForm(
     initialValues,
     validateRegister,
+    createAccount,
   )
 
   return (
@@ -40,13 +51,14 @@ function RegisterForm() {
 
       <CaptchaPlaceholder />
 
-      {isValidSubmit && (
-        <AuthMessage>
-          Registration form is valid. Backend registration will be connected later.
-        </AuthMessage>
-      )}
+      {formError && <AuthMessage variant="error">{formError}</AuthMessage>}
 
-      <AuthActions submitLabel="Register" switchLabel="Login" switchTo="/login" />
+      <AuthActions
+        submitLabel="Register"
+        switchLabel="Login"
+        switchTo="/login"
+        submitting={submitting}
+      />
     </form>
   )
 }

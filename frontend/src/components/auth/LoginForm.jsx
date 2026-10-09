@@ -1,21 +1,35 @@
+import { useLocation, useNavigate } from 'react-router-dom'
 import AuthActions from './AuthActions'
 import AuthMessage from './AuthMessage'
 import CaptchaPlaceholder from './CaptchaPlaceholder'
 import useAuthForm from './useAuthForm'
 import FormField from '../registration/FormField'
+import { getDashboardPath, useAuth } from '../../context/useAuth'
 import { validateLogin } from '../../utils/authValidation'
 
 const initialValues = { schoolId: '', password: '', keepSignedIn: false }
 
 function LoginForm() {
-  // TODO: On a valid submit, call the backend login API and redirect to the Student Portal.
-  const { values, errors, isValidSubmit, setField, inputProps, handleSubmit } = useAuthForm(
-    initialValues,
-    validateLogin,
-  )
+  const { login } = useAuth()
+  const navigate = useNavigate()
+  // Set by the register page after a successful registration
+  const justRegistered = useLocation().state?.registered === true
+
+  // The backend decides the role; the user is sent to the matching dashboard
+  const signIn = async (credentials) => {
+    const user = await login(credentials)
+    navigate(getDashboardPath(user), { replace: true })
+  }
+
+  const { values, errors, formError, submitting, setField, inputProps, handleSubmit } =
+    useAuthForm(initialValues, validateLogin, signIn)
 
   return (
     <form noValidate onSubmit={handleSubmit} className="space-y-4">
+      {justRegistered && !formError && (
+        <AuthMessage>Your account has been created. Please log in.</AuthMessage>
+      )}
+
       <div>
         <FormField id="schoolId" label="Driving School Id" error={errors.schoolId}>
           <input type="text" autoComplete="username" required {...inputProps('schoolId')} />
@@ -42,11 +56,14 @@ function LoginForm() {
         Keep me signed in
       </label>
 
-      {isValidSubmit && (
-        <AuthMessage>Login form is valid. Backend login will be connected later.</AuthMessage>
-      )}
+      {formError && <AuthMessage variant="error">{formError}</AuthMessage>}
 
-      <AuthActions submitLabel="Login" switchLabel="Register" switchTo="/register" />
+      <AuthActions
+        submitLabel="Login"
+        switchLabel="Register"
+        switchTo="/register"
+        submitting={submitting}
+      />
 
       <p className="pt-2 text-center">
         {/* TODO: Implement forgot-password flow with backend later */}

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { FaBars, FaCircleUser, FaLocationDot, FaPhone, FaXmark } from 'react-icons/fa6'
 import Logo from './Logo'
+import { getDashboardPath, useAuth } from '../context/useAuth'
 import { contactInfo, navLinks, socialLinks } from '../data/siteData'
 
 function TopBar() {
@@ -69,6 +70,9 @@ function Header() {
   const [menuOpen, setMenuOpen] = useState(false)
   const onAccountPage = ACCOUNT_PATHS.includes(useLocation().pathname)
   const accountColors = onAccountPage ? 'text-brand' : 'text-ink hover:text-brand'
+  // Signed-in users go to their own dashboard, everyone else to the login page
+  const { user } = useAuth()
+  const accountPath = user ? getDashboardPath(user) : '/login'
   const closeMenu = () => setMenuOpen(false)
 
   return (
@@ -89,7 +93,7 @@ function Header() {
               ))}
               <li>
                 <Link
-                  to="/login"
+                  to={accountPath}
                   aria-label="User account"
                   aria-current={onAccountPage ? 'page' : undefined}
                   className={`ml-1 flex items-center rounded-full p-2 text-2xl transition ${accountColors}`}
@@ -126,7 +130,7 @@ function Header() {
               ))}
               <li>
                 <Link
-                  to="/login"
+                  to={accountPath}
                   onClick={closeMenu}
                   aria-current={onAccountPage ? 'page' : undefined}
                   className={`flex items-center gap-2 rounded-lg px-4 py-3 font-medium transition hover:bg-brand-soft ${accountColors}`}
