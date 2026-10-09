@@ -2,15 +2,19 @@ import { useNavigate } from 'react-router-dom'
 import { FaBars, FaBell, FaMagnifyingGlass, FaRightFromBracket } from 'react-icons/fa6'
 import Logo from '../Logo'
 import UserAvatar from './UserAvatar'
+import { useAuth } from '../../context/useAuth'
 
 const iconButton =
   'relative flex cursor-pointer items-center rounded-full p-2.5 text-lg text-white transition hover:bg-white/15'
 
 function DashboardHeader({ panelTitle, user, menuOpen, onMenuClick }) {
   const navigate = useNavigate()
+  const { logout } = useAuth()
 
-  // TODO: Connect sign-out to authentication/session logic
-  const handleSignOut = () => navigate('/login')
+  const handleSignOut = async () => {
+    await logout()
+    navigate('/login')
+  }
 
   return (
     <header className="sticky top-0 z-40 bg-gradient-to-r from-brand-deep via-brand-dark to-brand text-white shadow-md">

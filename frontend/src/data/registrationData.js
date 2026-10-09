@@ -1,5 +1,6 @@
 // Static data for the online registration flow.
-// TODO: Load packages and payment details from the backend once the API exists.
+// NOTE: packages and the payment rule are mirrored in backend/config/packages.js, which is
+// what the server trusts. Keep the two in step until packages are loaded from the API.
 
 export const registrationSteps = [
   { id: 1, label: 'Your Details' },
@@ -21,7 +22,6 @@ export const formatPrice = (price) => `${formatAmount(price)}/=`
 
 // Registration payment rule: packages up to the threshold are paid in full,
 // more expensive packages need at least MINIMUM_PAYMENT_RATE of the price up front.
-// TODO: The backend must apply the same rule when payments are verified.
 export const FULL_PAYMENT_THRESHOLD = 10000
 export const MINIMUM_PAYMENT_RATE = 0.4
 

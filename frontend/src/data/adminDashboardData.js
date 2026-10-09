@@ -5,6 +5,7 @@ import {
   FaBookOpen,
   FaCalendarCheck,
   FaChalkboardUser,
+  FaClipboardList,
   FaGaugeHigh,
   FaUserGraduate,
   FaUserShield,
@@ -21,6 +22,11 @@ export const adminPanel = {
   menuItems: [
     { label: 'Dashboard', to: '/admin-dashboard', icon: FaGaugeHigh, end: true },
     { label: 'Manage Users', to: '/admin-dashboard/users', icon: FaUsersGear },
+    {
+      label: 'Registration Forms',
+      to: '/admin-dashboard/registration-forms',
+      icon: FaClipboardList,
+    },
   ],
 }
 

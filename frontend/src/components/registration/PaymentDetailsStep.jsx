@@ -17,7 +17,15 @@ const detailsByMethod = {
   [PAYMENT_METHODS.visitBranch]: BranchDetails,
 }
 
-function PaymentDetailsStep({ formData, errors, showErrors, onChange, onBack }) {
+function PaymentDetailsStep({
+  formData,
+  errors,
+  showErrors,
+  submitting,
+  submitError,
+  onChange,
+  onBack,
+}) {
   const selectedPackage = packages.find(({ id }) => id === formData.packageId)
   // Step 3 is only reachable after a package is chosen; the fallback keeps rendering safe
   const { minimumPayment, isFullPayment } = getMinimumPayment(selectedPackage?.price ?? 0)
@@ -75,7 +83,17 @@ function PaymentDetailsStep({ formData, errors, showErrors, onChange, onBack }) 
         </div>
       )}
 
-      <StepActions onBack={onBack} nextLabel="Submit Registration" />
+      {submitError && (
+        <p role="alert" className="mt-6 rounded-lg bg-brand-soft px-4 py-3 text-sm text-brand-dark">
+          {submitError}
+        </p>
+      )}
+
+      <StepActions
+        onBack={onBack}
+        nextLabel={submitting ? 'Submitting...' : 'Submit Registration'}
+        nextDisabled={submitting}
+      />
     </>
   )
 }

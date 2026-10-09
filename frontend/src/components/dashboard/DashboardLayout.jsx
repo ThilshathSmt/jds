@@ -4,10 +4,14 @@ import { FaAnglesLeft, FaAnglesRight } from 'react-icons/fa6'
 import DashboardHeader from './DashboardHeader'
 import DashboardSidebar from './DashboardSidebar'
 import MobileSidebar from './MobileSidebar'
+import { useAuth } from '../../context/useAuth'
 
 // Shared shell for the Admin, Student and Instructor panels: header, sidebar and routed page.
-// TODO: Protect these routes with backend role-based access control. For now anyone can open them.
-function DashboardLayout({ role, panelTitle, user, menuItems }) {
+// Rendered inside <ProtectedRoute>, so a signed-in user with the right role is guaranteed.
+function DashboardLayout({ role, panelTitle, user: panelUser, menuItems }) {
+  // Panel data supplies the avatar icon and role label; the name is the signed-in user's
+  const { user: authUser } = useAuth()
+  const user = { ...panelUser, name: authUser?.name ?? panelUser.name }
   const [collapsed, setCollapsed] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const { pathname } = useLocation()

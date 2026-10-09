@@ -1,24 +1,39 @@
 import { useState } from 'react'
 
-// Shared state for the login / register forms: field values, validation errors
-// (revealed after the first submit attempt) and whether the last submit was valid.
-function useAuthForm(initialValues, validate) {
+// Shared state for the login / register forms: field values, validation errors (revealed
+// after the first submit attempt) and the request sent by `onSubmit(values)`.
+// `onSubmit` may reject with an error carrying `message` and optional `fieldErrors`.
+function useAuthForm(initialValues, validate, onSubmit) {
   const [values, setValues] = useState(initialValues)
   const [showErrors, setShowErrors] = useState(false)
-  const [isValidSubmit, setIsValidSubmit] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [formError, setFormError] = useState('')
+  const [serverErrors, setServerErrors] = useState({})
 
-  const errors = showErrors ? validate(values) : {}
+  // The browser's own checks take priority over what the server last reported
+  const errors = showErrors ? { ...serverErrors, ...validate(values) } : {}
 
   const setField = (name, value) => {
     setValues((current) => ({ ...current, [name]: value }))
-    setIsValidSubmit(false)
+    setServerErrors((current) => ({ ...current, [name]: undefined }))
+    setFormError('')
   }
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault()
     setShowErrors(true)
-    // No API call here: the forms only report whether the input is valid
-    setIsValidSubmit(Object.keys(validate(values)).length === 0)
+    if (submitting || Object.keys(validate(values)).length > 0) return
+
+    setSubmitting(true)
+    setFormError('')
+    try {
+      await onSubmit(values)
+    } catch (error) {
+      setFormError(error.message)
+      setServerErrors(error.fieldErrors ?? {})
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   // Props for a text-like input bound to `name`
@@ -32,7 +47,7 @@ function useAuthForm(initialValues, validate) {
     className: `form-input ${errors[name] ? 'form-input-error' : ''}`,
   })
 
-  return { values, errors, isValidSubmit, setField, inputProps, handleSubmit }
+  return { values, errors, formError, submitting, setField, inputProps, handleSubmit }
 }
 
 export default useAuthForm
