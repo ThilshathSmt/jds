@@ -48,6 +48,8 @@ const toDetails = (row, documents) => ({
   approvedAt: row.approved_at,
   // True once the applicant has created their login account with the issued ID
   accountRegistered: row.account_user_id !== null,
+  // True when the student's account was later deleted by an admin (the ID is withdrawn)
+  accountDeleted: row.account_user_id === null && row.driving_school_id_status === 'revoked',
   documents: documents.map(toDocument),
 })
 
@@ -143,6 +145,13 @@ export const remove = async (id) => {
       throw new AppError(
         409,
         'This application belongs to a registered student account and cannot be deleted.',
+      )
+    }
+    // Kept as the record of a student whose account has since been deleted
+    if (application.driving_school_id_status === 'revoked') {
+      throw new AppError(
+        409,
+        'This application is the record of a deleted student account and cannot be deleted.',
       )
     }
 

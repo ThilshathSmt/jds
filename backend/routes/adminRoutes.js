@@ -4,6 +4,7 @@ import * as provisioningController from '../controllers/provisioningController.j
 import * as applicationController from '../controllers/registrationApplicationController.js'
 import { requireAuth } from '../middleware/authMiddleware.js'
 import { requireRole } from '../middleware/roleMiddleware.js'
+import userManagementRoutes from './userManagementRoutes.js'
 
 const router = Router()
 
@@ -11,6 +12,8 @@ const router = Router()
 router.use(requireAuth, requireRole('admin'))
 
 router.get('/dashboard', adminDashboard)
+
+router.use('/users', userManagementRoutes)
 
 router.get('/driving-school-ids', provisioningController.listDrivingSchoolIds)
 router.post('/driving-school-ids', provisioningController.createDrivingSchoolId)

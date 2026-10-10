@@ -76,6 +76,7 @@ export const register = async ({ drivingSchoolId, name, email, password }) => {
   return toPublicUser(await userModel.findById(userId))
 }
 
+// Returns the public user and the session version to put in the login token
 export const login = async ({ drivingSchoolId, password }) => {
   const user = await userModel.findByDrivingSchoolId(drivingSchoolId)
   const passwordMatches = await verifyPassword(
@@ -89,12 +90,14 @@ export const login = async ({ drivingSchoolId, password }) => {
   if (user.status !== 'active') {
     throw new AppError(403, 'This account is inactive. Please contact the school.')
   }
-  return toPublicUser(user)
+  return { user: toPublicUser(user), sessionVersion: user.session_version }
 }
 
 // Used by the auth middleware on every protected request. Returns null when the
-// account no longer exists or has been deactivated.
-export const getActiveUserById = async (userId) => {
+// account no longer exists, has been deactivated, or was deactivated after the token
+// was issued (its session version has moved on).
+export const getActiveUserById = async (userId, sessionVersion) => {
   const user = await userModel.findById(userId)
-  return user && user.status === 'active' ? toPublicUser(user) : null
+  const valid = user && user.status === 'active' && user.session_version === sessionVersion
+  return valid ? toPublicUser(user) : null
 }

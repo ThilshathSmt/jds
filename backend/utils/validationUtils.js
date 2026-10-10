@@ -8,6 +8,13 @@ export const PROVISIONABLE_ROLES = ['instructor']
 
 export const APPLICATION_STATUSES = ['NEW', 'APPROVED', 'SUSPENDED']
 
+// Accounts an admin manages on the Manage Users page. Admin accounts are never listed there.
+export const MANAGED_ROLES = ['student', 'instructor']
+export const ACCOUNT_STATUSES = ['active', 'inactive']
+const USER_PAGE_SIZE_DEFAULT = 10
+const USER_PAGE_SIZE_MAX = 100
+const SEARCH_MAX_LENGTH = 100
+
 export const PASSWORD_MIN_LENGTH = 8
 // bcrypt ignores everything after 72 bytes
 const PASSWORD_MAX_BYTES = 72
@@ -65,6 +72,55 @@ export const validateRegistrationInput = (body = {}) => {
 
   throwIfInvalid(errors)
   return input
+}
+
+// Admin creating an instructor account. Only these fields are read: a role, Driving School
+// ID, status or password hash sent by the client is ignored.
+export const validateInstructorInput = (body = {}) => {
+  const input = {
+    name: asTrimmedString(body.name),
+    email: asTrimmedString(body.email).toLowerCase(),
+    password: asString(body.password),
+  }
+  const confirmPassword = asString(body.confirmPassword)
+  const errors = {}
+
+  if (!input.name) errors.name = 'Full name is required.'
+  else if (input.name.length > 100) errors.name = 'Full name must be 100 characters or fewer.'
+  if (!input.email) errors.email = 'E-mail address is required.'
+  else if (!isValidEmail(input.email)) errors.email = 'Enter a valid email address.'
+  const passwordError = getPasswordError(input.password)
+  if (passwordError) errors.password = passwordError
+  if (!confirmPassword) errors.confirmPassword = 'Please confirm the password.'
+  else if (confirmPassword !== input.password) errors.confirmPassword = 'Passwords do not match.'
+
+  throwIfInvalid(errors)
+  return input
+}
+
+// Query string of the admin user list: ?role=&status=&search=&page=&pageSize=
+// Unknown or empty filters mean "all"; invalid values are rejected.
+export const validateUserListQuery = (query = {}) => {
+  const role = asTrimmedString(query.role).toLowerCase()
+  const status = asTrimmedString(query.status).toLowerCase()
+  const search = asTrimmedString(query.search).slice(0, SEARCH_MAX_LENGTH)
+  const page = query.page === undefined || query.page === '' ? 1 : Number(query.page)
+  const pageSize =
+    query.pageSize === undefined || query.pageSize === ''
+      ? USER_PAGE_SIZE_DEFAULT
+      : Number(query.pageSize)
+
+  if (role && !MANAGED_ROLES.includes(role)) {
+    throw new AppError(400, `Role must be one of: ${MANAGED_ROLES.join(', ')}.`)
+  }
+  if (status && !ACCOUNT_STATUSES.includes(status)) {
+    throw new AppError(400, `Status must be one of: ${ACCOUNT_STATUSES.join(', ')}.`)
+  }
+  if (!Number.isInteger(page) || page < 1) throw new AppError(400, 'Page must be 1 or more.')
+  if (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > USER_PAGE_SIZE_MAX) {
+    throw new AppError(400, `Page size must be between 1 and ${USER_PAGE_SIZE_MAX}.`)
+  }
+  return { role: role || undefined, status: status || undefined, search, page, pageSize }
 }
 
 export const validateLoginInput = (body = {}) => {
