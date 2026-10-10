@@ -1,6 +1,8 @@
 // Login sessions: a signed token (JWT) stored in an httpOnly cookie, so page scripts
-// can never read it. The token only carries the user id; role and status are read
-// from the database on every request (see middleware/authMiddleware.js).
+// can never read it. The token only carries the user id and the account's session
+// version; role and status are read from the database on every request (see
+// middleware/authMiddleware.js). Deactivating an account raises its session version, which
+// makes every token issued before that point invalid.
 
 import jwt from 'jsonwebtoken'
 import env from '../config/env.js'
@@ -20,9 +22,9 @@ const baseCookieOptions = {
 }
 
 // Without "keep me signed in" the cookie disappears when the browser closes
-export const createSession = (userId, keepSignedIn = false) => {
+export const createSession = (userId, sessionVersion, keepSignedIn = false) => {
   const lifetime = keepSignedIn ? KEEP_SIGNED_IN_SECONDS : SESSION_SECONDS
-  const token = jwt.sign({ sub: String(userId) }, env.authSecret, {
+  const token = jwt.sign({ sub: String(userId), ver: sessionVersion }, env.authSecret, {
     algorithm: ALGORITHM,
     expiresIn: lifetime,
   })
@@ -34,13 +36,16 @@ export const createSession = (userId, keepSignedIn = false) => {
 
 export const clearSessionCookieOptions = baseCookieOptions
 
-// Returns the user id from a valid token, or null
-export const readSessionUserId = (token) => {
+// Returns { userId, sessionVersion } from a valid token, or null.
+// Tokens issued before session versions existed carry no `ver` and count as version 0.
+export const readSession = (token) => {
   if (!token) return null
   try {
     const payload = jwt.verify(token, env.authSecret, { algorithms: [ALGORITHM] })
     const userId = Number(payload.sub)
-    return Number.isInteger(userId) ? userId : null
+    const sessionVersion = payload.ver ?? 0
+    if (!Number.isInteger(userId) || !Number.isInteger(sessionVersion)) return null
+    return { userId, sessionVersion }
   } catch {
     return null
   }

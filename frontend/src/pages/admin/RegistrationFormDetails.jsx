@@ -120,7 +120,9 @@ function RegistrationFormDetails() {
                     label: 'Student Account',
                     value: application.accountRegistered
                       ? 'Registered with this ID'
-                      : 'Not registered yet',
+                      : application.accountDeleted
+                        ? 'Account deleted (ID withdrawn)'
+                        : 'Not registered yet',
                   },
                 ]
               : []),

@@ -14,6 +14,14 @@ export const findByDrivingSchoolId = async (drivingSchoolId, db = pool, { forUpd
   return rows[0] ?? null
 }
 
+export const findByUserId = async (userId, db = pool, { forUpdate = false } = {}) => {
+  const [rows] = await db.execute(
+    `SELECT ${ID_COLUMNS} FROM driving_school_ids WHERE user_id = ? LIMIT 1${forUpdate ? ' FOR UPDATE' : ''}`,
+    [userId],
+  )
+  return rows[0] ?? null
+}
+
 export const findAll = async (db = pool) => {
   const [rows] = await db.execute(`SELECT ${ID_COLUMNS} FROM driving_school_ids ORDER BY id`)
   return rows
@@ -44,4 +52,12 @@ export const revokeIfAvailable = async (drivingSchoolId, db = pool) => {
     "UPDATE driving_school_ids SET status = 'revoked' WHERE driving_school_id = ? AND status = 'available'",
     [drivingSchoolId],
   )
+}
+
+// Withdraws the ID of an account that is being deleted. The row is kept (applications may
+// still refer to it, and keeping it stops the ID from ever being issued or used again).
+export const revokeAndUnlink = async (id, db = pool) => {
+  await db.execute("UPDATE driving_school_ids SET status = 'revoked', user_id = NULL WHERE id = ?", [
+    id,
+  ])
 }

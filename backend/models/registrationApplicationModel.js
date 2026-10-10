@@ -41,11 +41,12 @@ export const findAll = async ({ status } = {}, db = pool) => {
 }
 
 // The full application plus `account_user_id`: the user who registered with its
-// Driving School ID (NULL until that happens).
+// Driving School ID (NULL until that happens, or after the account is deleted), and
+// `driving_school_id_status` (available / assigned / revoked).
 // `forUpdate` locks the application (and its ID row) for the surrounding transaction.
 export const findById = async (id, db = pool, { forUpdate = false } = {}) => {
   const [rows] = await db.execute(
-    `SELECT a.*, d.user_id AS account_user_id
+    `SELECT a.*, d.user_id AS account_user_id, d.status AS driving_school_id_status
        FROM registration_applications a
        LEFT JOIN driving_school_ids d ON d.driving_school_id = a.driving_school_id
       WHERE a.id = ?${forUpdate ? ' FOR UPDATE' : ''}`,
@@ -56,7 +57,8 @@ export const findById = async (id, db = pool, { forUpdate = false } = {}) => {
 
 export const findByDrivingSchoolId = async (drivingSchoolId, db = pool) => {
   const [rows] = await db.execute(
-    'SELECT id, status FROM registration_applications WHERE driving_school_id = ? LIMIT 1',
+    `SELECT id, status, package_name, mobile_number, approved_at
+       FROM registration_applications WHERE driving_school_id = ? LIMIT 1`,
     [drivingSchoolId],
   )
   return rows[0] ?? null

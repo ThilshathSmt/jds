@@ -16,9 +16,9 @@ export const register = async (req, res) => {
 
 export const login = async (req, res) => {
   const { keepSignedIn, ...credentials } = validateLoginInput(req.body)
-  const user = await authService.login(credentials)
+  const { user, sessionVersion } = await authService.login(credentials)
 
-  const { token, cookieOptions } = createSession(user.id, keepSignedIn)
+  const { token, cookieOptions } = createSession(user.id, sessionVersion, keepSignedIn)
   res.cookie(SESSION_COOKIE, token, cookieOptions)
   sendSuccess(res, { message: 'Login successful', data: { user } })
 }

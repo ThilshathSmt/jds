@@ -1,5 +1,6 @@
 const styles = {
   Active: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
+  Inactive: 'bg-gray-100 text-gray-600 ring-gray-500/30',
   Confirmed: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
   Completed: 'bg-gray-100 text-gray-700 ring-gray-500/20',
   Pending: 'bg-amber-50 text-amber-700 ring-amber-600/20',

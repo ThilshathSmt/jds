@@ -27,3 +27,19 @@ export const validateRegister = ({ schoolId, name, email, password, confirmPassw
   else if (confirmPassword !== password) errors.confirmPassword = 'Passwords do not match.'
   return errors
 }
+
+// Admin "Create Instructor" form. The Driving School ID is issued by the backend.
+export const validateInstructor = ({ name, email, password, confirmPassword }) => {
+  const errors = {}
+  if (!name.trim()) errors.name = 'Full name is required.'
+  else if (name.trim().length > 100) errors.name = 'Full name must be 100 characters or fewer.'
+  if (!email.trim()) errors.email = 'E-mail address is required.'
+  else if (!isValidEmail(email.trim())) errors.email = 'Enter a valid email address.'
+  if (!password) errors.password = 'Password is required.'
+  else if (password.length < PASSWORD_MIN_LENGTH) {
+    errors.password = `Password must be at least ${PASSWORD_MIN_LENGTH} characters.`
+  }
+  if (!confirmPassword) errors.confirmPassword = 'Please confirm the password.'
+  else if (confirmPassword !== password) errors.confirmPassword = 'Passwords do not match.'
+  return errors
+}

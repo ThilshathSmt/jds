@@ -9,6 +9,9 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash VARCHAR(255) NOT NULL,
   role ENUM('admin', 'student', 'instructor') NOT NULL,
   status ENUM('active', 'inactive') NOT NULL DEFAULT 'active',
+  -- Increased whenever the account is deactivated; login tokens carrying an older value
+  -- are rejected, so a deactivated user's sessions stay dead even after reactivation.
+  session_version INT UNSIGNED NOT NULL DEFAULT 0,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uq_users_driving_school_id (driving_school_id),
@@ -20,7 +23,8 @@ CREATE TABLE IF NOT EXISTS users (
 -- An ID is issued with a role; a person can only register with an 'available' ID,
 -- and the account takes its role from this table (never from the registration request).
 --   available -> assigned (linked to the user who registered with it)
---   revoked: withdrawn before it was used
+--   revoked: withdrawn before it was used, or its account was deleted by an admin.
+--            A revoked ID is kept (applications may still refer to it) and is never reissued.
 CREATE TABLE IF NOT EXISTS driving_school_ids (
   id INT PRIMARY KEY AUTO_INCREMENT,
   driving_school_id VARCHAR(50) NOT NULL,
