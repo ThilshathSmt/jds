@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
-import { FaBars, FaBell, FaMagnifyingGlass, FaRightFromBracket } from 'react-icons/fa6'
+import { FaBars, FaMagnifyingGlass, FaRightFromBracket } from 'react-icons/fa6'
 import Logo from '../Logo'
+import NotificationBell from './NotificationBell'
 import UserAvatar from './UserAvatar'
 import { useAuth } from '../../context/useAuth'
 
@@ -59,14 +60,7 @@ function DashboardHeader({ panelTitle, user, menuOpen, onMenuClick }) {
             <FaMagnifyingGlass aria-hidden="true" />
           </button>
 
-          {/* UI only for now. TODO: Connect to real notifications */}
-          <button type="button" aria-label="Notifications" className={iconButton}>
-            <FaBell aria-hidden="true" />
-            <span
-              className="absolute top-1.5 right-1.5 h-2.5 w-2.5 rounded-full bg-amber-400 ring-2 ring-brand-dark"
-              aria-hidden="true"
-            />
-          </button>
+          <NotificationBell className={iconButton} />
 
           {/* TODO: Link to the profile page once it exists */}
           <div className="flex items-center gap-2 px-1 sm:px-2">

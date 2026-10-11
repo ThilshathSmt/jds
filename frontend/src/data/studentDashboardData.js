@@ -2,6 +2,7 @@
 // TODO: Replace with backend API data
 
 import {
+  FaBell,
   FaCalendarDay,
   FaCar,
   FaChartLine,
@@ -24,6 +25,7 @@ export const studentPanel = {
   menuItems: [
     { label: 'Dashboard', to: '/student-dashboard', icon: FaGaugeHigh, end: true },
     { label: 'Exams', to: '/student-dashboard/exams', icon: FaFileSignature },
+    { label: 'Notifications', to: '/student-dashboard/notifications', icon: FaBell },
   ],
 }
 

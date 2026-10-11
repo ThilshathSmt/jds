@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { FaArrowRight, FaFileSignature } from 'react-icons/fa6'
+import { FaArrowRight, FaCalendarCheck, FaFileSignature } from 'react-icons/fa6'
 import DashboardWelcome from '../../components/dashboard/DashboardWelcome'
 import { getExamIcon } from '../../data/examIcons'
 import { listExams } from '../../services/examApi'
@@ -35,6 +35,33 @@ function ExamCard({ exam }) {
         )}
       </div>
     </article>
+  )
+}
+
+// The physical driving licence examination: not a practice exam, so it is not in the
+// list loaded from the backend
+function ExamDateRequestCard() {
+  return (
+    <section className="flex flex-col gap-5 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:flex-row sm:items-center sm:p-8">
+      <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-brand-soft text-3xl text-brand">
+        <FaCalendarCheck aria-hidden="true" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <h2 className="text-xl font-extrabold text-ink sm:text-2xl">
+          Request Driving Licence Exam Date
+        </h2>
+        <p className="mt-2 text-gray-600">
+          Tell us which Tuesdays you are available for your physical driving licence examination.
+        </p>
+      </div>
+      <Link
+        to="/student-dashboard/exams/date-request"
+        className="btn btn-primary shrink-0 !rounded-lg !px-5 !py-2.5"
+      >
+        Request Exam Date
+        <FaArrowRight aria-hidden="true" />
+      </Link>
+    </section>
   )
 }
 
@@ -99,6 +126,8 @@ function Exams() {
           ))}
         </ul>
       )}
+
+      <ExamDateRequestCard />
     </>
   )
 }

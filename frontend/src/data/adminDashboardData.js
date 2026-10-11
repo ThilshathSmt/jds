@@ -2,6 +2,7 @@
 // TODO: Replace with backend API data
 
 import {
+  FaBell,
   FaBookOpen,
   FaCalendarCheck,
   FaChalkboardUser,
@@ -27,6 +28,7 @@ export const adminPanel = {
       to: '/admin-dashboard/registration-forms',
       icon: FaClipboardList,
     },
+    { label: 'Notifications', to: '/admin-dashboard/notifications', icon: FaBell },
   ],
 }
 

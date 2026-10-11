@@ -142,3 +142,69 @@ CREATE TABLE IF NOT EXISTS exam_attempt_answers (
   CONSTRAINT fk_exam_attempt_answers_attempt FOREIGN KEY (attempt_id)
     REFERENCES exam_attempts (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- A student's request for a date for the physical driving licence examination.
+--   PENDING -> APPROVED (the admin confirmed one of the preferred dates)
+--   PENDING -> REJECTED (with a reason). A decided request never changes again; after a
+--   rejection the student submits a new request.
+-- `student_name` and `driving_school_id` are copied from the account when the request is
+-- submitted, so the request reads the same even if the account is renamed later.
+-- `pending` is 1 while the request is PENDING and NULL afterwards. Because a UNIQUE key
+-- ignores NULLs, a student can have any number of decided requests but never two pending ones.
+-- `approved_date` is always one of the request's rows in exam_date_request_dates.
+CREATE TABLE IF NOT EXISTS exam_date_requests (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  user_id INT NOT NULL,
+  student_name VARCHAR(100) NOT NULL,
+  driving_school_id VARCHAR(50) NOT NULL,
+  medical_report_submitted TINYINT(1) NOT NULL,
+  status ENUM('PENDING', 'APPROVED', 'REJECTED') NOT NULL DEFAULT 'PENDING',
+  pending TINYINT NULL DEFAULT 1,
+  approved_date DATE NULL,
+  rejection_reason_code ENUM('MEDICAL_REPORT_NOT_SUBMITTED', 'NO_SLOTS_AVAILABLE', 'OTHER') NULL,
+  rejection_reason VARCHAR(300) NULL,
+  reviewed_by INT NULL,
+  reviewed_at TIMESTAMP NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_exam_date_requests_one_pending (user_id, pending),
+  KEY idx_exam_date_requests_status (status, created_at),
+  KEY idx_exam_date_requests_user (user_id, created_at),
+  CONSTRAINT fk_exam_date_requests_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+  CONSTRAINT fk_exam_date_requests_reviewed_by FOREIGN KEY (reviewed_by)
+    REFERENCES users (id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- The one to three Tuesdays a student is available on, in the order they were chosen
+-- (`position` 1 is the first choice). These are preferences, not bookings.
+CREATE TABLE IF NOT EXISTS exam_date_request_dates (
+  request_id INT NOT NULL,
+  position TINYINT UNSIGNED NOT NULL,
+  preferred_date DATE NOT NULL,
+  PRIMARY KEY (request_id, position),
+  UNIQUE KEY uq_exam_date_request_dates_date (request_id, preferred_date),
+  CONSTRAINT fk_exam_date_request_dates_request FOREIGN KEY (request_id)
+    REFERENCES exam_date_requests (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Notifications shown under the bell and on the Notifications pages. One row per
+-- recipient (`user_id`), so every user has their own read state: a message for the admins
+-- is stored once for each admin account. `read_at` is NULL until the recipient reads it.
+-- `type` says what the notification is about; `exam_date_request_id` links it to the
+-- request it concerns (NULL for future notification types that have no request).
+CREATE TABLE IF NOT EXISTS notifications (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  user_id INT NOT NULL,
+  type VARCHAR(50) NOT NULL,
+  title VARCHAR(150) NOT NULL,
+  message VARCHAR(600) NOT NULL,
+  exam_date_request_id INT NULL,
+  read_at TIMESTAMP NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_notifications_user (user_id, created_at),
+  KEY idx_notifications_user_unread (user_id, read_at),
+  KEY idx_notifications_request (exam_date_request_id),
+  CONSTRAINT fk_notifications_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+  CONSTRAINT fk_notifications_exam_date_request FOREIGN KEY (exam_date_request_id)
+    REFERENCES exam_date_requests (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
