@@ -7,7 +7,8 @@
 //          (numbered 166-170 there). They have no picture.
 //
 // As in the light-vehicle file: ids are permanent, `text` holds one entry per language
-// (only the Tamil source so far), and the correct answers are in answerKeys.js, not here.
+// (the Tamil source here, translations from ./translations), and the correct answers are
+// in answerKeys.js, not here.
 
 import { questions as lightVehiclePaperA } from './lightVehiclePaperA.js'
 

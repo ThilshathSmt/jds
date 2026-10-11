@@ -4,8 +4,10 @@
 
 import { questions as heavyVehiclePaperA } from './heavyVehiclePaperA.js'
 import { questions as lightVehiclePaperA } from './lightVehiclePaperA.js'
+import { withTranslations } from './translations/index.js'
 
-// Language the questions were written in, shown when a translation is missing
+// Language the questions were written in, shown when a translation is missing.
+// Translations are kept in ./translations and added to the questions below.
 export const SOURCE_LANGUAGE = 'ta'
 
 // `id` is used in URLs. Tamil and Sinhala titles match the public Exam Papers page.
@@ -16,7 +18,7 @@ export const papersByExam = {
       id: 'paper-a',
       title: { en: 'Guest Paper A', ta: 'மாதிரி வினாத்தாள் A', si: 'අනුමාන ප්‍රශ්න පත්‍රය A' },
       durationMinutes: 60,
-      questions: lightVehiclePaperA,
+      questions: withTranslations(lightVehiclePaperA),
     },
     {
       id: 'paper-b',
@@ -30,7 +32,7 @@ export const papersByExam = {
       id: 'paper-a',
       title: { en: 'Practice Paper A', ta: 'மாதிரி வினாத்தாள் A', si: 'අනුමාන ප්‍රශ්න පත්‍රය A' },
       durationMinutes: 60,
-      questions: heavyVehiclePaperA,
+      questions: withTranslations(heavyVehiclePaperA),
     },
     {
       id: 'paper-b',
