@@ -2,6 +2,7 @@
 // To add a paper: add its question file and an entry here, plus its answers in
 // answerKeys.js. An exam category without an entry simply has no papers yet.
 
+import { questions as heavyVehiclePaperA } from './heavyVehiclePaperA.js'
 import { questions as lightVehiclePaperA } from './lightVehiclePaperA.js'
 
 // Language the questions were written in, shown when a translation is missing
@@ -20,6 +21,20 @@ export const papersByExam = {
     {
       id: 'paper-b',
       title: { en: 'Guest Paper B', ta: 'மாதிரி வினாத்தாள் B', si: 'අනුමාන ප්‍රශ්න පත්‍රය B' },
+      durationMinutes: 60,
+      questions: [],
+    },
+  ],
+  'heavy-vehicle': [
+    {
+      id: 'paper-a',
+      title: { en: 'Practice Paper A', ta: 'மாதிரி வினாத்தாள் A', si: 'අනුමාන ප්‍රශ්න පත්‍රය A' },
+      durationMinutes: 60,
+      questions: heavyVehiclePaperA,
+    },
+    {
+      id: 'paper-b',
+      title: { en: 'Practice Paper B', ta: 'மாதிரி வினாத்தாள் B', si: 'අනුමාන ප්‍රශ්න පත්‍රය B' },
       durationMinutes: 60,
       questions: [],
     },
