@@ -4,8 +4,8 @@
 //
 // - `id` values are permanent: answers and the answer key refer to questions and options
 //   by id, never by position, so options can be reordered or shuffled later.
-// - `text` holds one entry per language. Only the Tamil source ('ta') exists so far; add
-//   `en` / `si` beside it once approved translations are available.
+// - `text` holds one entry per language. This file is the Tamil source ('ta'); the
+//   translations in ./translations are added beside it (see index.js).
 // - `imageAlt` describes what the sign looks like, never what it means (that is the answer).
 // - The correct answers are NOT in this file: see answerKeys.js.
 
