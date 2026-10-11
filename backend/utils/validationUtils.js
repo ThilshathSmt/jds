@@ -1,5 +1,6 @@
 import { PAYMENT_METHODS, findPackageById } from '../config/packages.js'
 import AppError from './AppError.js'
+import { addDays, getSchoolDate, isTuesday, isValidDate } from './dateUtils.js'
 
 export const ROLES = ['admin', 'student', 'instructor']
 // Roles an admin may issue an ID for directly. Student IDs are issued only by approving
@@ -7,6 +8,22 @@ export const ROLES = ['admin', 'student', 'instructor']
 export const PROVISIONABLE_ROLES = ['instructor']
 
 export const APPLICATION_STATUSES = ['NEW', 'APPROVED', 'SUSPENDED']
+
+export const EXAM_DATE_REQUEST_STATUSES = ['PENDING', 'APPROVED', 'REJECTED']
+export const MAX_PREFERRED_DATES = 3
+// How far ahead a preferred date may be
+const PREFERRED_DATE_HORIZON_DAYS = 365
+export const MEDICAL_REPORT_REQUIRED_MESSAGE =
+  'Please submit your medical report before requesting a driving licence examination date.'
+// Reasons an admin may give for rejecting an exam date request. OTHER needs the admin's own text.
+export const REJECTION_REASONS = {
+  MEDICAL_REPORT_NOT_SUBMITTED: 'Medical report not submitted',
+  NO_SLOTS_AVAILABLE: 'No examination slots available',
+  OTHER: 'Other',
+}
+const OTHER_REASON_MAX_LENGTH = 300
+const NOTIFICATION_LIMIT_DEFAULT = 20
+const NOTIFICATION_LIMIT_MAX = 100
 
 // Accounts an admin manages on the Manage Users page. Admin accounts are never listed there.
 export const MANAGED_ROLES = ['student', 'instructor']
@@ -187,6 +204,90 @@ export const validateApplicationStatusFilter = (value) => {
     throw new AppError(400, `Status must be one of: ${APPLICATION_STATUSES.join(', ')}.`)
   }
   return status
+}
+
+// A request for a physical exam date. Only these two fields are read: a student id, name,
+// status or approved date sent by the client is ignored. The dates must be one to three
+// different Tuesdays after today's date in Sri Lanka; they are returned in the order sent.
+export const validateExamDateRequestInput = (body = {}, now = new Date()) => {
+  // Only a real `true` counts: the student has to confirm it, nothing is assumed
+  if (body.medicalReportSubmitted !== true) {
+    throw new AppError(400, MEDICAL_REPORT_REQUIRED_MESSAGE, {
+      medicalReportSubmitted: MEDICAL_REPORT_REQUIRED_MESSAGE,
+    })
+  }
+
+  const dates = body.preferredDates
+  const today = getSchoolDate(now)
+  let error = ''
+  if (!Array.isArray(dates) || dates.length === 0) {
+    error = 'Select at least one Tuesday.'
+  } else if (dates.length > MAX_PREFERRED_DATES) {
+    error = `You can select up to ${MAX_PREFERRED_DATES} dates.`
+  } else if (!dates.every(isValidDate)) {
+    error = 'One of the selected dates is not a valid date.'
+  } else if (new Set(dates).size !== dates.length) {
+    error = 'Select different dates: the same date was selected twice.'
+  } else if (!dates.every(isTuesday)) {
+    error = 'Only Tuesdays can be selected.'
+  } else if (dates.some((date) => date <= today)) {
+    error = 'Only future dates can be selected. Today and past dates are not available.'
+  } else if (dates.some((date) => date > addDays(today, PREFERRED_DATE_HORIZON_DAYS))) {
+    error = 'Select dates within the next 12 months.'
+  }
+  if (error) throw new AppError(400, error, { preferredDates: error })
+
+  return { medicalReportSubmitted: true, preferredDates: [...dates] }
+}
+
+// Optional ?status= filter for the admin list. Returns undefined when no filter is given.
+export const validateExamDateRequestStatusFilter = (value) => {
+  if (value === undefined || value === '') return undefined
+  const status = asTrimmedString(value).toUpperCase()
+  if (!EXAM_DATE_REQUEST_STATUSES.includes(status)) {
+    throw new AppError(400, `Status must be one of: ${EXAM_DATE_REQUEST_STATUSES.join(', ')}.`)
+  }
+  return status
+}
+
+// Admin approving a request: exactly one date. Whether it is one of the student's
+// preferred dates is checked against the stored request in the service.
+export const validateExamDateApprovalInput = (body = {}) => {
+  const approvedDate = asTrimmedString(body.approvedDate)
+  if (!isValidDate(approvedDate)) {
+    const message = 'Choose one of the dates the student requested.'
+    throw new AppError(400, message, { approvedDate: message })
+  }
+  return { approvedDate }
+}
+
+// Admin rejecting a request: one of the listed reasons, with the admin's own text for OTHER
+export const validateExamDateRejectionInput = (body = {}) => {
+  const reasonCode = asTrimmedString(body.reason).toUpperCase()
+  const otherReason = asTrimmedString(body.otherReason)
+  const errors = {}
+
+  if (!Object.hasOwn(REJECTION_REASONS, reasonCode)) {
+    errors.reason = 'Please choose a reason for the rejection.'
+  } else if (reasonCode === 'OTHER') {
+    if (!otherReason) errors.otherReason = 'Please enter the reason for the rejection.'
+    else if (otherReason.length > OTHER_REASON_MAX_LENGTH) {
+      errors.otherReason = `The reason must be ${OTHER_REASON_MAX_LENGTH} characters or fewer.`
+    }
+  }
+
+  throwIfInvalid(errors)
+  return { reasonCode, otherReason: reasonCode === 'OTHER' ? otherReason : null }
+}
+
+// Query string of the notification list: ?limit=
+export const validateNotificationListQuery = (query = {}) => {
+  const limit =
+    query.limit === undefined || query.limit === '' ? NOTIFICATION_LIMIT_DEFAULT : Number(query.limit)
+  if (!Number.isInteger(limit) || limit < 1 || limit > NOTIFICATION_LIMIT_MAX) {
+    throw new AppError(400, `Limit must be between 1 and ${NOTIFICATION_LIMIT_MAX}.`)
+  }
+  return { limit }
 }
 
 // An answer to an exam question. Only the option id is read: a score, correct answer,

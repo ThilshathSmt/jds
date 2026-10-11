@@ -65,7 +65,16 @@ export const findPage = async ({ roles, status, search, limit, offset }, db = po
   return { rows, total }
 }
 
-export const updateStatus = async (id, status, db = pool) => {
+// Ids of the accounts of one role that can currently sign in
+export const findActiveIdsByRole = async (role, db = pool) => {
+  const [rows] = await db.execute(
+    "SELECT id FROM users WHERE role = ? AND status = 'active' ORDER BY id",
+    [role],
+  )
+  return rows.map((row) => row.id)
+}
+
+export const updateStatus =async (id, status, db = pool) => {
   await db.execute('UPDATE users SET status = ? WHERE id = ?', [status, id])
 }
 

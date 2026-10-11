@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { studentDashboard } from '../controllers/dashboardController.js'
 import * as examAttemptController from '../controllers/examAttemptController.js'
 import * as examController from '../controllers/examController.js'
+import * as examDateRequestController from '../controllers/examDateRequestController.js'
 import { requireAuth } from '../middleware/authMiddleware.js'
 import { requireRole } from '../middleware/roleMiddleware.js'
 
@@ -26,5 +27,10 @@ router.post('/exam-attempts/:attemptId/submit', examAttemptController.submit)
 router.post('/exam-attempts/:attemptId/resume', examAttemptController.resume)
 router.post('/exam-attempts/:attemptId/finish-review', examAttemptController.finishReview)
 router.get('/exam-attempts/:attemptId/result', examAttemptController.getResult)
+
+// Requests for a physical driving licence exam date. Always the signed-in student's own.
+router.get('/exam-date-requests', examDateRequestController.listOwn)
+router.post('/exam-date-requests', examDateRequestController.submit)
+router.get('/exam-date-requests/:id', examDateRequestController.getOwn)
 
 export default router

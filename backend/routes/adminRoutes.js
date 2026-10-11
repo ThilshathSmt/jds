@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { adminDashboard } from '../controllers/dashboardController.js'
+import * as examDateRequestController from '../controllers/examDateRequestController.js'
 import * as provisioningController from '../controllers/provisioningController.js'
 import * as applicationController from '../controllers/registrationApplicationController.js'
 import { requireAuth } from '../middleware/authMiddleware.js'
@@ -24,5 +25,11 @@ router.post('/registration-forms/:id/approve', applicationController.approve)
 router.post('/registration-forms/:id/suspend', applicationController.suspend)
 router.delete('/registration-forms/:id', applicationController.remove)
 router.get('/registration-forms/:id/documents/:documentId', applicationController.getDocument)
+
+// Requests for a physical driving licence exam date, reviewed on the Notifications page
+router.get('/exam-date-requests', examDateRequestController.list)
+router.get('/exam-date-requests/:id', examDateRequestController.getDetails)
+router.post('/exam-date-requests/:id/approve', examDateRequestController.approve)
+router.post('/exam-date-requests/:id/reject', examDateRequestController.reject)
 
 export default router
