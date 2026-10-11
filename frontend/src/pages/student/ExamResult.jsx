@@ -12,9 +12,10 @@ import {
   FaSquarePollVertical,
 } from 'react-icons/fa6'
 import DashboardWelcome from '../../components/dashboard/DashboardWelcome'
+import { ReviewQuestion } from '../../components/exam/ExamReview'
 import { getLanguage } from '../../data/examPapersData'
 import { getPracticeText, pickText } from '../../data/examPracticeText'
-import { getAttemptResult } from '../../services/examApi'
+import { getAttempt, getAttemptResult } from '../../services/examApi'
 import { formatDuration } from '../../utils/formatUtils'
 import useExamLanguage from '../../utils/useExamLanguage'
 
@@ -31,11 +32,22 @@ function ExamResult() {
   const [language] = useExamLanguage()
   // Keyed by attempt, so one result is never shown for another
   const [loaded, setLoaded] = useState({ attemptId: null, result: null, error: null })
+  // The finished attempt: its questions with the student's and the correct answers
+  const [review, setReview] = useState({ attemptId: null, attempt: null })
 
   useEffect(() => {
     let active = true
     getAttemptResult(attemptId)
-      .then((result) => active && setLoaded({ attemptId, result, error: null }))
+      .then((result) => {
+        if (!active) return null
+        setLoaded({ attemptId, result, error: null })
+        // Only asked for once the result exists, that is once the review is finished
+        return getAttempt(attemptId).then(
+          (attempt) => active && setReview({ attemptId, attempt }),
+          // The marks stay on screen even if the answers could not be loaded
+          () => {},
+        )
+      })
       .catch((error) => active && setLoaded({ attemptId, result: null, error }))
     return () => {
       active = false
@@ -43,6 +55,8 @@ function ExamResult() {
   }, [attemptId])
 
   const { result, error } = loaded.attemptId === attemptId ? loaded : { result: null, error: null }
+  const attempt =
+    review.attemptId === attemptId && review.attempt?.status === 'completed' ? review.attempt : null
   const text = getPracticeText(language)
   const htmlLang = getLanguage(language).htmlLang
   const paperPath = `${EXAMS_PATH}/${examType}/${paperId}`
@@ -186,6 +200,28 @@ function ExamResult() {
           </div>
         ))}
       </dl>
+
+      {attempt && (
+        <section aria-labelledby="result-answers" className="flex flex-col gap-4">
+          <h2 id="result-answers" className="text-xl font-bold text-ink sm:text-2xl">
+            {text.answersTitle}
+          </h2>
+          <ol className="flex flex-col gap-4">
+            {attempt.questions.map((question) => (
+              <li key={question.id}>
+                <ReviewQuestion
+                  question={question}
+                  total={attempt.questions.length}
+                  language={language}
+                  sourceLanguage={attempt.sourceLanguage}
+                  text={text}
+                  isReviewFinalized
+                />
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
 
       <div className="flex flex-wrap justify-end gap-3">
         <Link

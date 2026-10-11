@@ -12,7 +12,7 @@ export const list = async (req, res) => {
 export const getDetails = async (req, res) => {
   const exam = await examService.getExam(req.params.examType)
   sendSuccess(res, {
-    message: 'Exam category retrieved successfully. Exam questions will be added later.',
+    message: 'Exam category retrieved successfully',
     data: { exam },
   })
 }

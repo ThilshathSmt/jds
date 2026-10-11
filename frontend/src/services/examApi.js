@@ -25,7 +25,8 @@ export const listExamPapers = (examType) =>
 // ---- Timed attempts. The backend owns the clock, the question order and the scoring;
 // nothing sent from here can change them. An "attempt" below is the backend's view of it:
 //   in_progress: { id, status, questions, answers, remainingSeconds, ... } (no correct answers)
-//   submitted:   questions also carry selectedOptionId, correctOptionId and outcome
+//   submitted:   questions also carry selectedOptionId (still no correct answers)
+//   completed:   questions also carry correctOptionId and outcome
 
 const ATTEMPTS_PATH = '/api/student/exam-attempts'
 

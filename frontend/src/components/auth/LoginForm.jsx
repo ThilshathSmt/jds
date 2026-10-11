@@ -2,6 +2,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import AuthActions from './AuthActions'
 import AuthMessage from './AuthMessage'
 import CaptchaPlaceholder from './CaptchaPlaceholder'
+import PasswordInput from './PasswordInput'
 import useAuthForm from './useAuthForm'
 import FormField from '../registration/FormField'
 import { getDashboardPath, useAuth } from '../../context/useAuth'
@@ -35,12 +36,7 @@ function LoginForm() {
           <input type="text" autoComplete="username" required {...inputProps('schoolId')} />
         </FormField>
         <FormField id="password" label="Password" error={errors.password}>
-          <input
-            type="password"
-            autoComplete="current-password"
-            required
-            {...inputProps('password')}
-          />
+          <PasswordInput autoComplete="current-password" required {...inputProps('password')} />
         </FormField>
       </div>
 
