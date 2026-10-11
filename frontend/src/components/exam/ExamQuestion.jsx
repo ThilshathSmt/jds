@@ -1,10 +1,20 @@
+import QuestionFigure from './QuestionFigure'
 import { getLanguage } from '../../data/examPapersData'
 import { formatText, pickText } from '../../data/examPracticeText'
 
-// One practice question: its road sign, the question and four radio-button answers.
-// `selectedOptionId` / `onSelect(optionId)` use option ids, so the choice does not depend
-// on the order the options are shown in. Nothing here knows the correct answer.
-function PracticeQuestion({ question, total, language, sourceLanguage, text, selectedOptionId, onSelect }) {
+// One exam question: its picture, the question and four radio-button answers, in the order
+// the attempt was given. `selectedOptionId` / `onSelect(optionId)` use the options'
+// permanent ids, never their position. Nothing here knows the correct answer.
+function ExamQuestion({
+  question,
+  total,
+  language,
+  sourceLanguage,
+  text,
+  selectedOptionId,
+  onSelect,
+  disabled = false,
+}) {
   const questionText = pickText(question.text, language, sourceLanguage)
   const headingId = `question-${question.id}`
 
@@ -16,17 +26,7 @@ function PracticeQuestion({ question, total, language, sourceLanguage, text, sel
       </legend>
 
       <div className="flex flex-col items-start gap-5 sm:flex-row sm:items-center">
-        {question.imageUrl && (
-          // Fixed height; the frame widens for landscape pictures (photographs) so they are not shrunk
-          <span className="flex h-40 max-w-full min-w-40 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white p-3">
-            <img
-              src={question.imageUrl}
-              alt={question.imageAlt || formatText(text.signAlt, { number: question.number })}
-              lang="en"
-              className="h-full w-auto max-w-full object-contain"
-            />
-          </span>
-        )}
+        <QuestionFigure question={question} text={text} />
         <p
           id={headingId}
           lang={getLanguage(questionText.language).htmlLang}
@@ -43,7 +43,7 @@ function PracticeQuestion({ question, total, language, sourceLanguage, text, sel
           return (
             <li key={option.id}>
               <label
-                className={`flex cursor-pointer items-start gap-3 rounded-xl border-2 px-4 py-3 transition focus-within:ring-2 focus-within:ring-brand/30 ${
+                className={`flex items-start gap-3 rounded-xl border-2 px-4 py-3 transition focus-within:ring-2 focus-within:ring-brand/30 ${disabled ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'} ${
                   selected
                     ? 'border-brand bg-brand-soft'
                     : 'border-gray-200 bg-white hover:border-brand/40 hover:bg-gray-50'
@@ -54,6 +54,7 @@ function PracticeQuestion({ question, total, language, sourceLanguage, text, sel
                   name={question.id}
                   value={option.id}
                   checked={selected}
+                  disabled={disabled}
                   onChange={() => onSelect(option.id)}
                   className="mt-1.5 h-4 w-4 shrink-0 accent-brand"
                 />
@@ -73,4 +74,4 @@ function PracticeQuestion({ question, total, language, sourceLanguage, text, sel
   )
 }
 
-export default PracticeQuestion
+export default ExamQuestion

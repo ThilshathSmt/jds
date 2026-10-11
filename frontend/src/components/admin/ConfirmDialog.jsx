@@ -6,11 +6,14 @@ const confirmStyles = {
 }
 
 // Modal confirmation built on the native <dialog>: focus is trapped and Esc cancels.
-// Render it only while a confirmation is needed.
+// Render it only while a confirmation is needed. `cancelLabel` / `busyLabel` are for pages
+// shown in another language.
 function ConfirmDialog({
   title,
   message,
   confirmLabel,
+  cancelLabel = 'Cancel',
+  busyLabel = 'Please wait...',
   tone = 'primary',
   busy = false,
   error,
@@ -51,7 +54,7 @@ function ConfirmDialog({
           disabled={busy}
           className="btn !rounded-lg bg-gray-200 !px-5 !py-2 text-ink hover:bg-gray-300 disabled:opacity-60"
         >
-          Cancel
+          {cancelLabel}
         </button>
         <button
           type="button"
@@ -59,7 +62,7 @@ function ConfirmDialog({
           disabled={busy}
           className={`btn !rounded-lg !px-5 !py-2 disabled:cursor-wait disabled:opacity-70 ${confirmStyles[tone]}`}
         >
-          {busy ? 'Please wait...' : confirmLabel}
+          {busy ? busyLabel : confirmLabel}
         </button>
       </div>
     </dialog>

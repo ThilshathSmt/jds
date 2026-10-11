@@ -8,16 +8,19 @@ import { questions as lightVehiclePaperA } from './lightVehiclePaperA.js'
 export const SOURCE_LANGUAGE = 'ta'
 
 // `id` is used in URLs. Tamil and Sinhala titles match the public Exam Papers page.
+// `durationMinutes` is the time allowed for one timed attempt at the paper.
 export const papersByExam = {
   'light-vehicle': [
     {
       id: 'paper-a',
       title: { en: 'Guest Paper A', ta: 'மாதிரி வினாத்தாள் A', si: 'අනුමාන ප්‍රශ්න පත්‍රය A' },
+      durationMinutes: 60,
       questions: lightVehiclePaperA,
     },
     {
       id: 'paper-b',
       title: { en: 'Guest Paper B', ta: 'மாதிரி வினாத்தாள் B', si: 'අනුමාන ප්‍රශ්න පත්‍රය B' },
+      durationMinutes: 60,
       questions: [],
     },
   ],

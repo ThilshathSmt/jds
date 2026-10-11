@@ -1,6 +1,6 @@
-// Business rules for the practice papers of an exam category: which papers exist and the
-// questions a student is shown. Practice only for now; scoring, timing and saved attempts
-// will be added here later.
+// Business rules for the papers of an exam category: which papers exist and what a
+// student is shown of their questions. Timed attempts, scoring and results are in
+// examAttemptService.js.
 //
 // Responses are built field by field from the question data. The answer key is never read
 // here, so a correct answer cannot end up in what a student receives.
@@ -10,13 +10,14 @@ import * as examPaperModel from '../models/examPaperModel.js'
 import AppError from '../utils/AppError.js'
 import { getExam } from './examService.js'
 
-const toPaperSummary = (paper) => ({
+export const toPaperSummary = (paper) => ({
   id: paper.id,
   title: paper.title,
   questionCount: paper.questions.length,
+  durationMinutes: paper.durationMinutes,
 })
 
-const toStudentQuestion = (question) => ({
+export const toStudentQuestion = (question) => ({
   id: question.id,
   number: question.number,
   imageUrl: question.imageUrl,
@@ -26,7 +27,7 @@ const toStudentQuestion = (question) => ({
 })
 
 // Languages every question and option of the paper has been written in
-const getContentLanguages = (questions) => {
+export const getContentLanguages = (questions) => {
   if (questions.length === 0) return []
   const texts = questions.flatMap((question) => [question.text, ...question.options.map((o) => o.text)])
   return Object.keys(texts[0]).filter((language) => texts.every((text) => text[language]))
