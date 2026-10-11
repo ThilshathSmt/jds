@@ -2,6 +2,7 @@ import { useState } from 'react'
 import {
   FaArrowLeft,
   FaCircleCheck,
+  FaCircleDot,
   FaCircleMinus,
   FaCircleXmark,
   FaClock,
@@ -16,8 +17,15 @@ import useCountdown from '../../utils/useCountdown'
 
 const cardClass = 'rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6'
 
-// How each outcome of a question is shown. The outcome comes from the backend.
+// How each outcome of a question is shown. The outcome comes from the backend, and only
+// once the review is finished; until then a question is just answered or unanswered.
 const outcomes = {
+  answered: {
+    label: 'statusAnswered',
+    icon: FaCircleDot,
+    badge: 'bg-brand-soft text-brand-dark ring-brand/20',
+    border: 'border-l-brand',
+  },
   correct: {
     label: 'statusCorrect',
     icon: FaCircleCheck,
@@ -39,15 +47,28 @@ const outcomes = {
 }
 
 // One question of the review: every option in the order of the attempt, with the
-// student's choice and the correct answer marked. Options are matched by their permanent
-// ids, never by where they are shown.
-function ReviewQuestion({ question, total, language, sourceLanguage, text }) {
-  const { label, icon: OutcomeIcon, badge, border } = outcomes[question.outcome]
+// student's choice marked. The correct answer and whether the choice was right are shown
+// only when `isReviewFinalized` (after "Finish Review"); before that the backend does not
+// send them. Options are matched by their permanent ids, never by where they are shown.
+export function ReviewQuestion({
+  question,
+  total,
+  language,
+  sourceLanguage,
+  text,
+  isReviewFinalized = false,
+}) {
+  const outcome = isReviewFinalized
+    ? question.outcome
+    : question.selectedOptionId
+      ? 'answered'
+      : 'unanswered'
+  const { label, icon: OutcomeIcon, badge, border } = outcomes[outcome]
   const questionText = pickText(question.text, language, sourceLanguage)
 
   return (
     <article
-      data-outcome={question.outcome}
+      data-outcome={outcome}
       className={`${cardClass} border-l-4 ${border}`}
       aria-label={formatText(text.questionOf, { current: question.number, total })}
     >
@@ -76,7 +97,7 @@ function ReviewQuestion({ question, total, language, sourceLanguage, text }) {
       <ol aria-label={text.answerOptions} className="mt-5 flex flex-col gap-2">
         {question.options.map((option, index) => {
           const optionText = pickText(option.text, language, sourceLanguage)
-          const isCorrect = option.id === question.correctOptionId
+          const isCorrect = isReviewFinalized && option.id === question.correctOptionId
           const isSelected = option.id === question.selectedOptionId
           const style = isCorrect
             ? 'border-emerald-500 bg-emerald-50'
@@ -103,7 +124,12 @@ function ReviewQuestion({ question, total, language, sourceLanguage, text }) {
                   <span
                     className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${isCorrect ? 'bg-emerald-600 text-white' : 'bg-brand text-white'}`}
                   >
-                    {isCorrect ? <FaCircleCheck aria-hidden="true" /> : <FaCircleXmark aria-hidden="true" />}
+                    {isReviewFinalized &&
+                      (isCorrect ? (
+                        <FaCircleCheck aria-hidden="true" />
+                      ) : (
+                        <FaCircleXmark aria-hidden="true" />
+                      ))}
                     {text.yourAnswer}
                   </span>
                 )}

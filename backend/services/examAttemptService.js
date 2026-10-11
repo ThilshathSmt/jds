@@ -9,7 +9,7 @@
 //   - which answers are correct, and the score
 // An attempt whose deadline has passed is submitted the next time anything touches it, as
 // if it had been submitted at the deadline, so closing the browser changes nothing.
-// Correct answers are only ever sent once an attempt has been submitted.
+// Correct answers are only ever sent once the review of an attempt has been finished.
 //
 // Every function takes `now` last. Callers leave it out; tests pass a fixed time.
 
@@ -116,13 +116,15 @@ const toResult = (attempt, exam, paper) => ({
   completedAt: attempt.completed_at,
 })
 
-// What the student is shown of an attempt. Built field by field: while the attempt is in
-// progress nothing about correct answers is included.
+// What the student is shown of an attempt. Built field by field: nothing about correct
+// answers is included until the review has been finished.
 const toView = async (attempt, now) => {
   const { exam, paper } = await loadExamAndPaper(attempt.exam_id, attempt.paper_id)
   const answers = await examAttemptModel.findAnswers(attempt.id)
   const questionsById = new Map(paper.questions.map((question) => [question.id, question]))
   const inProgress = attempt.status === 'in_progress'
+  // "Finish Review" has been used: only now may correct answers leave the server
+  const isReviewFinalized = attempt.status === 'completed'
 
   // The attempt's own order of questions and options; `number` is the position in it
   const questions = attempt.question_order
@@ -143,6 +145,9 @@ const toView = async (attempt, now) => {
       if (inProgress) return shown
 
       const selectedOptionId = answers[questionId] ?? null
+      // Under review the student only sees what they chose, not whether it was right
+      if (!isReviewFinalized) return { ...shown, selectedOptionId }
+
       const correctOptionId = attempt.answer_key[questionId] ?? null
       return {
         ...shown,
