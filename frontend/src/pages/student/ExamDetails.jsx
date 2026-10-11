@@ -29,7 +29,7 @@ function PaperCard({ examId, paper, language }) {
       </h2>
       <p className="mt-2 text-gray-600">
         {paper.questionCount > 0
-          ? formatText(practiceText.questionCount, { count: paper.questionCount })
+          ? `${formatText(practiceText.questionCount, { count: paper.questionCount })} · ${formatText(practiceText.minutes, { count: paper.durationMinutes })}`
           : practiceText.noQuestions}
       </p>
       <div className="mt-auto pt-6">

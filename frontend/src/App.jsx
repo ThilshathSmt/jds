@@ -14,8 +14,9 @@ import ManageUsers from './pages/admin/ManageUsers'
 import RegistrationFormDetails from './pages/admin/RegistrationFormDetails'
 import RegistrationForms from './pages/admin/RegistrationForms'
 import ExamDetails from './pages/student/ExamDetails'
+import ExamPaper from './pages/student/ExamPaper'
+import ExamResult from './pages/student/ExamResult'
 import Exams from './pages/student/Exams'
-import PracticePaper from './pages/student/PracticePaper'
 import StudentDashboard from './pages/student/StudentDashboard'
 import InstructorDashboard from './pages/instructor/InstructorDashboard'
 import { adminPanel } from './data/adminDashboardData'
@@ -59,7 +60,8 @@ function App() {
           <Route index element={<StudentDashboard />} />
           <Route path="exams" element={<Exams />} />
           <Route path="exams/:examType" element={<ExamDetails />} />
-          <Route path="exams/:examType/:paperId" element={<PracticePaper />} />
+          <Route path="exams/:examType/:paperId" element={<ExamPaper />} />
+          <Route path="exams/:examType/:paperId/results/:attemptId" element={<ExamResult />} />
         </Route>
         <Route
           path="/instructor-dashboard"

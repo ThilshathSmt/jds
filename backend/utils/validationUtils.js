@@ -189,6 +189,16 @@ export const validateApplicationStatusFilter = (value) => {
   return status
 }
 
+// An answer to an exam question. Only the option id is read: a score, correct answer,
+// time or status sent by the client is ignored.
+export const validateAnswerInput = (body = {}) => {
+  const optionId = asTrimmedString(body.optionId)
+  if (!optionId || optionId.length > 60) {
+    throw new AppError(400, 'Please choose one of the answer options.')
+  }
+  return { optionId }
+}
+
 // Route ids (/:id). Anything that is not a positive whole number cannot match a record.
 export const parseId = (value) => {
   if (!/^[1-9][0-9]{0,9}$/.test(String(value))) throw new AppError(404, 'Record not found.')
