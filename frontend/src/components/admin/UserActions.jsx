@@ -30,7 +30,7 @@ const actions = {
   delete: {
     label: 'Delete',
     icon: FaTrashCan,
-    className: 'bg-brand text-white hover:bg-brand-dark',
+    className: 'bg-danger text-white hover:bg-danger-dark',
     title: 'Permanently delete account?',
     message: (user) =>
       `This permanently deletes ${user.name}'s login account and cannot be undone. ` +
@@ -40,7 +40,7 @@ const actions = {
         ? 'Their registration application and payment receipts are kept.'
         : 'To block access only for a while, deactivate the account instead.'),
     confirmLabel: 'Delete permanently',
-    tone: 'primary',
+    tone: 'danger',
     run: deleteUser,
     success: (user) => `${user.name}'s account (${user.drivingSchoolId}) has been deleted.`,
   },

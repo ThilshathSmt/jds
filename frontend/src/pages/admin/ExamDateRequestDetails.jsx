@@ -84,7 +84,7 @@ function RejectDialog({ request, onRejected, onClose }) {
             ))}
           </div>
           {fieldErrors.reason && (
-            <p role="alert" className="mt-2 text-sm text-brand-dark">
+            <p role="alert" className="mt-2 text-sm text-danger-dark">
               {fieldErrors.reason}
             </p>
           )}
@@ -92,7 +92,7 @@ function RejectDialog({ request, onRejected, onClose }) {
           {reason === 'OTHER' && (
             <div className="mt-4">
               <label htmlFor="other-reason" className="mb-1.5 block text-sm font-semibold text-ink">
-                Reason <span className="text-brand">*</span>
+                Reason <span className="text-danger">*</span>
               </label>
               <textarea
                 id="other-reason"
@@ -109,7 +109,7 @@ function RejectDialog({ request, onRejected, onClose }) {
                 The student will see this reason. {otherReason.length}/{OTHER_REASON_MAX_LENGTH}
               </p>
               {fieldErrors.otherReason && (
-                <p role="alert" className="mt-1 text-sm text-brand-dark">
+                <p role="alert" className="mt-1 text-sm text-danger-dark">
                   {fieldErrors.otherReason}
                 </p>
               )}
@@ -118,7 +118,7 @@ function RejectDialog({ request, onRejected, onClose }) {
         </fieldset>
 
         {error && (
-          <p role="alert" className="mt-4 rounded-lg bg-brand-soft px-4 py-3 text-sm text-brand-dark">
+          <p role="alert" className="mt-4 rounded-lg bg-danger-soft px-4 py-3 text-sm text-danger-dark">
             {error}
           </p>
         )}
@@ -137,7 +137,7 @@ function RejectDialog({ request, onRejected, onClose }) {
           <button
             type="submit"
             disabled={busy}
-            className="btn btn-primary !rounded-lg !px-5 !py-2 disabled:cursor-wait disabled:opacity-70"
+            className="btn btn-danger !rounded-lg !px-5 !py-2 disabled:cursor-wait disabled:opacity-70"
           >
             {busy ? 'Please wait...' : 'Reject Request'}
           </button>
@@ -283,7 +283,7 @@ function ExamDateRequestDetails() {
             <button
               type="button"
               onClick={() => setDialog('reject')}
-              className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-dark"
+              className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-danger px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-danger-dark"
             >
               <FaBan aria-hidden="true" />
               Reject

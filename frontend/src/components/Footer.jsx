@@ -8,7 +8,7 @@ const linkClass = 'transition hover:text-white'
 
 function Footer() {
   return (
-    <footer id="contact" className="border-t-4 border-brand bg-ink text-gray-300">
+    <footer id="contact" className="border-t-4 border-accent bg-ink text-gray-300">
       <div className="container-page grid gap-10 py-14 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1.2fr]">
         <div>
           <Logo light />

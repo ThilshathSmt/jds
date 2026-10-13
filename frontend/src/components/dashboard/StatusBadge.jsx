@@ -4,14 +4,14 @@ const styles = {
   Confirmed: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
   Completed: 'bg-gray-100 text-gray-700 ring-gray-500/20',
   Pending: 'bg-amber-50 text-amber-700 ring-amber-600/20',
-  Cancelled: 'bg-brand-soft text-brand-dark ring-brand/20',
+  Cancelled: 'bg-danger-soft text-danger-dark ring-danger/20',
   // Registration application statuses
   NEW: 'bg-amber-50 text-amber-700 ring-amber-600/20',
   APPROVED: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
-  SUSPENDED: 'bg-brand-soft text-brand-dark ring-brand/20',
+  SUSPENDED: 'bg-danger-soft text-danger-dark ring-danger/20',
   // Exam date request statuses
   PENDING: 'bg-amber-50 text-amber-700 ring-amber-600/20',
-  REJECTED: 'bg-brand-soft text-brand-dark ring-brand/20',
+  REJECTED: 'bg-danger-soft text-danger-dark ring-danger/20',
 }
 
 // `label` replaces the status as the text shown, e.g. 'Pending' for PENDING

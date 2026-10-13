@@ -32,7 +32,7 @@ function ExamPapers() {
 
           <div className="mx-auto mt-12 mb-10 max-w-2xl text-center">
             <h2 className="text-2xl font-bold text-ink sm:text-3xl">{text.sectionTitle}</h2>
-            <span className="mx-auto mt-4 block h-1 w-16 rounded-full bg-brand" aria-hidden="true" />
+            <span className="mx-auto mt-4 block h-1 w-16 rounded-full bg-accent" aria-hidden="true" />
             <p className="mt-4 text-base text-gray-600">{text.sectionSubtitle}</p>
           </div>
 

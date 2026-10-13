@@ -2,6 +2,8 @@ import { useEffect, useRef } from 'react'
 
 const confirmStyles = {
   primary: 'btn-primary',
+  // Deleting and other actions that cannot be undone
+  danger: 'btn-danger',
   neutral: 'bg-ink text-white hover:bg-black',
 }
 
@@ -43,7 +45,7 @@ function ConfirmDialog({
       </h2>
       <p className="mt-3 text-gray-700">{message}</p>
       {error && (
-        <p role="alert" className="mt-4 rounded-lg bg-brand-soft px-4 py-3 text-sm text-brand-dark">
+        <p role="alert" className="mt-4 rounded-lg bg-danger-soft px-4 py-3 text-sm text-danger-dark">
           {error}
         </p>
       )}

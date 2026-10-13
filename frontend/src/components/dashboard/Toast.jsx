@@ -3,7 +3,7 @@ import { FaCircleCheck, FaCircleExclamation, FaXmark } from 'react-icons/fa6'
 
 const variants = {
   success: { icon: FaCircleCheck, className: 'border-emerald-200 bg-emerald-50 text-emerald-800' },
-  error: { icon: FaCircleExclamation, className: 'border-brand/30 bg-brand-soft text-brand-dark' },
+  error: { icon: FaCircleExclamation, className: 'border-danger/30 bg-danger-soft text-danger-dark' },
 }
 
 const AUTO_CLOSE_MS = 5000

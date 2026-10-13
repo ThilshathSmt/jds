@@ -36,7 +36,7 @@ function ExamPaperDetail() {
           <h1 className="mt-6 text-2xl font-bold text-ink sm:text-3xl">
             {paper ? getPaperTitle(paper, language) : text.notFoundTitle}
           </h1>
-          <span className="mx-auto mt-4 block h-1 w-16 rounded-full bg-brand" aria-hidden="true" />
+          <span className="mx-auto mt-4 block h-1 w-16 rounded-full bg-accent" aria-hidden="true" />
           <p className="mt-6 text-gray-600">{paper ? text.placeholder : text.notFoundText}</p>
         </div>
       </div>

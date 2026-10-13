@@ -125,7 +125,7 @@ function RequestForm({ onSubmitted, onConflict }) {
         {medical === 'no' && (
           <p
             role="alert"
-            className="mt-5 flex items-start gap-3 rounded-lg bg-brand-soft px-4 py-3 font-medium text-brand-dark"
+            className="mt-5 flex items-start gap-3 rounded-lg bg-danger-soft px-4 py-3 font-medium text-danger-dark"
           >
             <FaTriangleExclamation aria-hidden="true" className="mt-1 shrink-0" />
             {MEDICAL_REPORT_REQUIRED_MESSAGE}
@@ -193,7 +193,7 @@ function RequestForm({ onSubmitted, onConflict }) {
           </div>
 
           {error && (
-            <p role="alert" className="mt-6 rounded-lg bg-brand-soft px-4 py-3 text-sm text-brand-dark">
+            <p role="alert" className="mt-6 rounded-lg bg-danger-soft px-4 py-3 text-sm text-danger-dark">
               {error}
             </p>
           )}

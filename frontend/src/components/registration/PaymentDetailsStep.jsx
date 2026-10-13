@@ -65,7 +65,7 @@ function PaymentDetailsStep({
             </label>
           ))}
         </div>
-        <p id="paymentMethod-error" role="alert" className="mt-2 min-h-5 text-sm text-brand">
+        <p id="paymentMethod-error" role="alert" className="mt-2 min-h-5 text-sm text-danger">
           {showErrors ? errors.paymentMethod : undefined}
         </p>
       </fieldset>
@@ -84,7 +84,7 @@ function PaymentDetailsStep({
       )}
 
       {submitError && (
-        <p role="alert" className="mt-6 rounded-lg bg-brand-soft px-4 py-3 text-sm text-brand-dark">
+        <p role="alert" className="mt-6 rounded-lg bg-danger-soft px-4 py-3 text-sm text-danger-dark">
           {submitError}
         </p>
       )}

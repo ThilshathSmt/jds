@@ -44,7 +44,7 @@ function PackageDetailsStep({ formData, errors, showErrors, onChange, onBack }) 
             )
           })}
         </div>
-        <p id="packageId-error" role="alert" className="mt-2 min-h-5 text-sm text-brand">
+        <p id="packageId-error" role="alert" className="mt-2 min-h-5 text-sm text-danger">
           {error}
         </p>
       </fieldset>

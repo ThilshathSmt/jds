@@ -13,7 +13,7 @@ function ExamHero({ text }) {
             {text.title}
           </h1>
           <span
-            className="mx-auto mt-5 block h-1 w-16 rounded-full bg-brand lg:mx-0"
+            className="mx-auto mt-5 block h-1 w-16 rounded-full bg-accent lg:mx-0"
             aria-hidden="true"
           />
           <p className="mx-auto mt-5 max-w-2xl text-base font-semibold text-gray-800 sm:text-lg lg:mx-0">
