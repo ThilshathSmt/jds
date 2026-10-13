@@ -118,7 +118,7 @@ function ExamResult() {
       label: text.incorrectAnswers,
       value: result.incorrect,
       icon: FaCircleXmark,
-      className: 'border-brand/20 bg-brand-soft text-brand-dark',
+      className: 'border-danger/20 bg-danger-soft text-danger-dark',
     },
     {
       key: 'unanswered',

@@ -81,7 +81,7 @@ function StartScreen({ exam, paper, paperTitle, lastResult, text, onStart, cance
       )}
 
       {error && (
-        <p role="alert" className="mt-4 rounded-lg bg-brand-soft px-4 py-3 text-sm text-brand-dark">
+        <p role="alert" className="mt-4 rounded-lg bg-danger-soft px-4 py-3 text-sm text-danger-dark">
           {error}
         </p>
       )}

@@ -1,14 +1,39 @@
 @import "tailwindcss";
 
-/* Jeslan Driving School brand tokens: red primary, white secondary */
+/* Jeslan Driving School theme: navy and royal blue with a cyan accent, on white.
+   Every colour of the site comes from the tokens below (used as bg-brand, text-ink,
+   border-danger and so on), so the theme is changed here and nowhere else. */
 @theme {
   --font-sans: "Poppins", "Noto Sans Tamil", "Noto Sans Sinhala", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 
-  --color-brand: #d6202a;
-  --color-brand-dark: #a8141c;
-  --color-brand-deep: #6e0c12;
-  --color-brand-soft: #fdecec;
-  --color-ink: #1b1b1f;
+  /* Brand blues: deep (navy) for headers, dark for hover and strong text, brand for
+     buttons, links and selected states, soft for tinted surfaces */
+  --color-brand: #1769e0;
+  --color-brand-dark: #123a8c;
+  --color-brand-deep: #0b1f5b;
+  --color-brand-soft: #e8f1fb;
+  /* Cyan, used sparingly: the short rule under headings */
+  --color-accent: #00a6c7;
+  /* Main text, and the dark surface of the sidebar and footer */
+  --color-ink: #172033;
+
+  /* Errors and actions that cannot be undone. Red is kept for these only. */
+  --color-danger: #dc2626;
+  --color-danger-dark: #b91c1c;
+  --color-danger-soft: #fef2f2;
+
+  /* Neutrals with a blue tint: page backgrounds (50, 100), borders (200, 300) and
+     secondary text (500, 600). Replaces Tailwind's default grey scale. */
+  --color-gray-50: #f7fafd;
+  --color-gray-100: #f2f7fc;
+  --color-gray-200: #d8e2ef;
+  --color-gray-300: #c3d0e0;
+  --color-gray-400: #94a3b8;
+  --color-gray-500: #64748b;
+  --color-gray-600: #475569;
+  --color-gray-700: #334155;
+  --color-gray-800: #1e293b;
+  --color-gray-900: #172033;
 }
 
 @layer base {
@@ -49,7 +74,11 @@
   }
 
   .form-input-error {
-    @apply border-brand bg-brand-soft/40;
+    @apply border-danger bg-danger-soft;
+  }
+
+  .btn-danger {
+    @apply bg-danger text-white shadow-md shadow-danger/30 hover:bg-danger-dark;
   }
 
   .btn-outline {

@@ -11,7 +11,7 @@ function FileUpload({ id, label, file, error, onChange }) {
     <div>
       <p className="mb-2 font-semibold text-ink">
         {label}
-        <span className="text-brand" aria-hidden="true">
+        <span className="text-danger" aria-hidden="true">
           {' '}
           *
         </span>
@@ -48,7 +48,7 @@ function FileUpload({ id, label, file, error, onChange }) {
               type="button"
               onClick={() => onChange(null)}
               aria-label="Remove selected file"
-              className="shrink-0 cursor-pointer rounded-full p-1 text-gray-500 transition hover:bg-gray-100 hover:text-brand"
+              className="shrink-0 cursor-pointer rounded-full p-1 text-gray-500 transition hover:bg-gray-100 hover:text-danger"
             >
               <FaXmark aria-hidden="true" />
             </button>
@@ -61,7 +61,7 @@ function FileUpload({ id, label, file, error, onChange }) {
       <p id={`${id}-hint`} className="mt-2 text-sm text-gray-500">
         PDF, JPG, JPEG or PNG. Maximum file size 2 MB.
       </p>
-      <p id={`${id}-error`} role="alert" className="mt-1 min-h-5 text-sm text-brand">
+      <p id={`${id}-error`} role="alert" className="mt-1 min-h-5 text-sm text-danger">
         {error}
       </p>
     </div>

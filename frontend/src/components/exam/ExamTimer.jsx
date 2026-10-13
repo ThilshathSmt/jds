@@ -7,7 +7,7 @@ const ONE_MINUTE = 60
 const styles = {
   normal: 'border-gray-200 bg-white text-ink',
   warning: 'border-amber-300 bg-amber-50 text-amber-900',
-  critical: 'border-brand bg-brand text-white',
+  critical: 'border-danger bg-danger text-white',
 }
 
 // The time left in HH:MM:SS. Turns amber for the last five minutes and red for the last

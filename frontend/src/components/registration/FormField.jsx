@@ -6,7 +6,7 @@ function FormField({ id, label, required = false, error, hint, className = '', c
       <label htmlFor={id} className="mb-2 block font-semibold text-ink">
         {label}
         {required && (
-          <span className="text-brand" aria-hidden="true">
+          <span className="text-danger" aria-hidden="true">
             {' '}
             *
           </span>
@@ -14,7 +14,7 @@ function FormField({ id, label, required = false, error, hint, className = '', c
       </label>
       {children}
       <div className="mt-1 flex min-h-5 justify-between gap-3 text-sm">
-        <p id={`${id}-error`} role="alert" className="text-brand">
+        <p id={`${id}-error`} role="alert" className="text-danger">
           {error}
         </p>
         {hint && <p className="shrink-0 text-gray-500">{hint}</p>}

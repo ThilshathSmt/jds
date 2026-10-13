@@ -1,6 +1,6 @@
 const variants = {
   success: { role: 'status', className: 'border-green-200 bg-green-50 text-green-800' },
-  error: { role: 'alert', className: 'border-brand/30 bg-brand-soft text-brand-dark' },
+  error: { role: 'alert', className: 'border-danger/30 bg-danger-soft text-danger-dark' },
 }
 
 // Notice shown above the form buttons, e.g. a failed login or a completed registration

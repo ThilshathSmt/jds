@@ -41,12 +41,12 @@ const actions = {
   delete: {
     label: 'Delete',
     icon: FaTrashCan,
-    className: 'bg-brand text-white hover:bg-brand-dark',
+    className: 'bg-danger text-white hover:bg-danger-dark',
     title: 'Delete application?',
     message: () =>
       'Are you sure you want to delete this registration application? Its uploaded documents will be removed too.',
     confirmLabel: 'Delete',
-    tone: 'primary',
+    tone: 'danger',
     // Resolves with null: the application no longer exists
     run: async (id) => {
       await deleteApplication(id)

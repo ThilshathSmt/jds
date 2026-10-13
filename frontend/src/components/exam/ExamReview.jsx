@@ -35,8 +35,8 @@ const outcomes = {
   incorrect: {
     label: 'statusIncorrect',
     icon: FaCircleXmark,
-    badge: 'bg-brand-soft text-brand-dark ring-brand/20',
-    border: 'border-l-brand',
+    badge: 'bg-danger-soft text-danger-dark ring-danger/20',
+    border: 'border-l-danger',
   },
   unanswered: {
     label: 'statusUnanswered',
@@ -99,11 +99,16 @@ export function ReviewQuestion({
           const optionText = pickText(option.text, language, sourceLanguage)
           const isCorrect = isReviewFinalized && option.id === question.correctOptionId
           const isSelected = option.id === question.selectedOptionId
+          // A wrong choice is only shown as wrong once the review is finished; before
+          // that every chosen option looks the same as it did during the attempt
+          const isWrong = isReviewFinalized && isSelected && !isCorrect
           const style = isCorrect
             ? 'border-emerald-500 bg-emerald-50'
-            : isSelected
-              ? 'border-brand bg-brand-soft'
-              : 'border-gray-200 bg-white'
+            : isWrong
+              ? 'border-danger bg-danger-soft'
+              : isSelected
+                ? 'border-brand bg-brand-soft'
+                : 'border-gray-200 bg-white'
           return (
             <li
               key={option.id}
@@ -122,7 +127,7 @@ export function ReviewQuestion({
               <span className="flex flex-wrap gap-2">
                 {isSelected && (
                   <span
-                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${isCorrect ? 'bg-emerald-600 text-white' : 'bg-brand text-white'}`}
+                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${isCorrect ? 'bg-emerald-600 text-white' : isWrong ? 'bg-danger text-white' : 'bg-brand text-white'}`}
                   >
                     {isReviewFinalized &&
                       (isCorrect ? (
@@ -211,7 +216,7 @@ function ExamReview({ attempt, language, onAttempt, onFinished, onReload }) {
 
       <section className={cardClass}>
         {error && (
-          <p role="alert" className="mb-4 rounded-lg bg-brand-soft px-4 py-3 text-sm text-brand-dark">
+          <p role="alert" className="mb-4 rounded-lg bg-danger-soft px-4 py-3 text-sm text-danger-dark">
             {error}
           </p>
         )}
