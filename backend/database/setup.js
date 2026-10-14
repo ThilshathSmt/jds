@@ -93,6 +93,12 @@ const ADDED_COLUMNS = [
     column: 'registration_application_id',
     definition: 'INT NULL AFTER exam_reattempt_request_id',
   },
+  // A reapplication's confirmation that the student has obtained a new medical report
+  {
+    table: 'registration_applications',
+    column: 'new_medical_report_confirmed',
+    definition: 'TINYINT(1) NULL AFTER pending',
+  },
   // The new medical report a cycle started from (NULL for first cycles and older ones)
   {
     table: 'exam_attempt_cycles',

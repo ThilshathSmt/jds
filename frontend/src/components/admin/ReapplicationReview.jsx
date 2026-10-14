@@ -160,7 +160,7 @@ export function ReapplicationActions({ application, onChanged }) {
       {dialog === 'approve' && (
         <ConfirmDialog
           title="Approve reapplication?"
-          message={`This confirms that you have verified ${application.fullName}'s new medical report and the ${formatPrice(application.minimumPayment)} registration payment for ${application.packageName}. The existing account ${student?.drivingSchoolId ?? ''} will be reactivated with the same Driving School ID and password, and will start a new cycle of ${attemptsPerCycle} examination attempts. This cannot be undone.`}
+          message={`This confirms that you have verified ${application.fullName}'s new medical report (confirmed by the student) and the ${formatPrice(application.minimumPayment)} registration payment for ${application.packageName}. The existing account ${student?.drivingSchoolId ?? ''} will be reactivated with the same Driving School ID and password, and will start a new cycle of ${attemptsPerCycle} examination attempts. This cannot be undone.`}
           confirmLabel="Approve"
           busy={busy}
           error={error}
@@ -272,16 +272,19 @@ function ReapplicationReview({ application }) {
   const verificationRows = [
     {
       label: 'New Medical Report',
-      value: medicalReport.submitted ? (
-        <span data-verification="medical-report">
-          <StatusBadge status={medicalReport.status} label={verificationLabels[medicalReport.status]} />
-          <span className="mt-1 block text-sm font-normal text-gray-600">
-            Submitted: see the documents below.
+      value:
+        medicalReport.confirmed || medicalReport.uploaded ? (
+          <span data-verification="medical-report" data-confirmed={medicalReport.confirmed}>
+            <StatusBadge status={medicalReport.status} label={verificationLabels[medicalReport.status]} />
+            <span className="mt-1 block text-sm font-normal text-gray-600">
+              {medicalReport.confirmed
+                ? "The student confirmed obtaining a new medical report. Verify it through the school's usual process before approving."
+                : 'Uploaded with this application: see the documents below.'}
+            </span>
           </span>
-        </span>
-      ) : (
-        'Not submitted'
-      ),
+        ) : (
+          'Not confirmed'
+        ),
     },
     {
       label: 'Registration Payment',

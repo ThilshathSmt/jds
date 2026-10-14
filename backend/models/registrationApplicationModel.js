@@ -117,8 +117,8 @@ export const createReapplication = async (application, db = pool) => {
     `INSERT INTO registration_applications
        (full_name, mobile_number, email, nic, address,
         package_id, package_name, package_price, minimum_payment, payment_method,
-        application_type, user_id, pending)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'REAPPLICATION', ?, 1)`,
+        application_type, user_id, pending, new_medical_report_confirmed)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'REAPPLICATION', ?, 1, ?)`,
     [
       application.fullName,
       application.mobileNumber,
@@ -131,6 +131,7 @@ export const createReapplication = async (application, db = pool) => {
       application.minimumPayment,
       application.paymentMethod,
       application.userId,
+      application.newMedicalReportConfirmed ? 1 : 0,
     ],
   )
   return result.insertId

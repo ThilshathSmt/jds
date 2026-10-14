@@ -48,7 +48,8 @@ export const uploadReattemptDocuments = multer({
 ])
 
 // Parses the reapplication form: text fields into req.body and the files into
-// req.files.medicalReport[0] and req.files.receipt[0] (the registration payment). They are application
+// req.files.receipt[0] (the registration payment). (A medicalReport file is still accepted
+// from older forms, but is not saved: the student now confirms the report instead.) They are application
 // documents, kept with the other application uploads. Same file rules as above.
 export const uploadReapplicationDocuments = multer({
   storage: createStorage(env.applicationUploadsDir),

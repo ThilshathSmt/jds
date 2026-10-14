@@ -68,8 +68,10 @@ CREATE TABLE IF NOT EXISTS driving_school_id_sequences (
 --   NEW -> REJECTED (with `rejection_reason`; the account stays locked)
 -- `pending` is 1 while a reapplication is NEW and NULL otherwise: one pending
 -- reapplication per student. Like a first-time application it has a package chosen by the
--- student, its minimum registration payment and the payment receipt; it also carries the
--- new medical report as a document. It never includes the examination reattempt fee.
+-- student, its minimum registration payment and the payment receipt. The student confirms
+-- that they have obtained a new medical report (`new_medical_report_confirmed` = 1); the
+-- report itself is checked by the school, not uploaded. NULL on first-time applications.
+-- It never includes the examination reattempt fee.
 -- (Reapplications from before packages were chosen copied the first application's package
 -- and recorded the reattempt fee as `minimum_payment`.)
 CREATE TABLE IF NOT EXISTS registration_applications (
@@ -89,6 +91,7 @@ CREATE TABLE IF NOT EXISTS registration_applications (
   application_type ENUM('NEW_STUDENT', 'REAPPLICATION') NOT NULL DEFAULT 'NEW_STUDENT',
   user_id INT NULL,
   pending TINYINT NULL,
+  new_medical_report_confirmed TINYINT(1) NULL,
   rejection_reason VARCHAR(300) NULL,
   reviewed_by INT NULL,
   reviewed_at TIMESTAMP NULL,

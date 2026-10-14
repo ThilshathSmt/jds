@@ -330,10 +330,31 @@ export const validateReapplicationCredentials = (body = {}) => {
   return credentials
 }
 
+export const MEDICAL_REPORT_NOT_OBTAINED_MESSAGE =
+  'Please obtain a new medical report before continuing with your reapplication.'
+
 // The reapplication form: the same fields as the Apply Now form (details, package and
-// payment method). A user id, status, price, fee or account status sent by the client is
-// ignored. The files are checked by the upload middleware and the service.
-export const validateReapplicationInput = (body = {}) => validateApplicationInput(body)
+// payment method), plus the student's answer to "Have you obtained a new medical report?",
+// which must be an explicit 'yes'. A user id, status, price, fee or account status sent by
+// the client is ignored. The receipt is checked by the upload middleware and the service.
+export const validateReapplicationInput = (body = {}) => {
+  const answer = asTrimmedString(body.newMedicalReportConfirmed).toLowerCase()
+  let medicalError = ''
+  if (answer === 'no') medicalError = MEDICAL_REPORT_NOT_OBTAINED_MESSAGE
+  else if (answer !== 'yes') medicalError = 'Please answer whether you have obtained a new medical report.'
+
+  let input
+  try {
+    input = validateApplicationInput(body)
+  } catch (error) {
+    if (medicalError && error instanceof AppError) {
+      error.errors = { ...error.errors, newMedicalReportConfirmed: medicalError }
+    }
+    throw error
+  }
+  if (medicalError) throw new AppError(400, medicalError, { newMedicalReportConfirmed: medicalError })
+  return { ...input, newMedicalReportConfirmed: true }
+}
 
 // Optional ?type= filter for the admin list of applications
 export const validateApplicationTypeFilter = (value) => {
