@@ -1,7 +1,8 @@
 import StepActions from './StepActions'
-import { formatPrice, packages } from '../../data/registrationData'
+import { formatPrice } from '../../data/registrationData'
 
-function PackageDetailsStep({ formData, errors, showErrors, onChange, onBack }) {
+// `options.packages` are the active packages, loaded from the backend
+function PackageDetailsStep({ formData, errors, showErrors, options, onChange, onBack }) {
   const error = showErrors ? errors.packageId : undefined
 
   return (
@@ -15,7 +16,7 @@ function PackageDetailsStep({ formData, errors, showErrors, onChange, onBack }) 
           </span>
         </legend>
         <div className="space-y-3">
-          {packages.map(({ id, name, price }) => {
+          {options.packages.map(({ id, name, price }) => {
             const selected = formData.packageId === id
             return (
               <label

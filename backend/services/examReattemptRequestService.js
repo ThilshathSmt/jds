@@ -13,7 +13,7 @@
 // What the server alone decides, whatever a browser sends:
 //   - who the student is, and which failed attempt the payment is for (always their most
 //     recent failure that has no approved payment yet)
-//   - the fee
+//   - the fee: the amount fixed on the failed attempt when its result was recorded
 //   - that nothing counts as accepted until an admin has approved it: uploading a receipt
 //     approves nothing
 //   - that a failure is approved once
@@ -23,12 +23,13 @@
 
 import path from 'node:path'
 import { withTransaction } from '../config/database.js'
-import { ATTEMPTS_PER_CYCLE, REATTEMPT_FEE } from '../config/licenceExam.js'
+import { ATTEMPTS_PER_CYCLE } from '../config/licenceExam.js'
 import * as examReattemptRequestModel from '../models/examReattemptRequestModel.js'
 import * as licenceExamModel from '../models/licenceExamModel.js'
 import AppError from '../utils/AppError.js'
 import { RECEIPT_TYPES, hasValidSignature } from '../utils/fileUtils.js'
 import { exhaustsCycle, getAttemptHistory, getSummary } from './licenceExamService.js'
+import { getSettings } from './settingsService.js'
 import {
   NOTIFICATION_TYPES,
   markReattemptNotificationsRead,
@@ -171,7 +172,8 @@ export const submit = async (student, { paymentMethod }, files = {}) => {
           cycleId: failedAttempt.cycle_id,
           failedAttemptId: failedAttempt.id,
           medicalReportRequired: false,
-          feeAmount: REATTEMPT_FEE,
+          // The obligation recorded with the failure, not today's setting
+          feeAmount: failedAttempt.reattempt_fee ?? (await getSettings(db)).reattemptFee,
           paymentMethod,
         },
         db,
@@ -263,7 +265,8 @@ export const approve = async (id, adminId, now = new Date()) => {
   try {
     return await decide(id, now, async (request, db) => {
       // What the request claims is checked against the attempt itself
-      if (request.attempt_result !== 'FAILED' || request.fee_amount !== REATTEMPT_FEE) {
+      const owed = request.attempt_reattempt_fee
+      if (request.attempt_result !== 'FAILED' || (owed !== null && request.fee_amount !== owed)) {
         throw new AppError(409, 'This payment does not match a failed examination attempt and cannot be approved.')
       }
       // UNIQUE (failed_attempt_id, approved) refuses a second approved payment for the failure

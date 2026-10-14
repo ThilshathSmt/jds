@@ -10,7 +10,7 @@ const CYCLE_COLUMNS =
 
 const ATTEMPT_COLUMNS = `a.id, a.user_id, a.cycle_id, c.cycle_number, a.attempt_number,
   a.exam_date_request_id, DATE_FORMAT(a.exam_date, '%Y-%m-%d') AS exam_date, a.result,
-  a.recorded_at`
+  a.reattempt_fee, a.recorded_at`
 
 // Every student has a first cycle. It is created the first time it is needed; the UNIQUE
 // key on (user_id, cycle_number) makes a second, simultaneous insert do nothing.
@@ -106,17 +106,19 @@ export const findAttemptsByRequestIds = async (requestIds, db = pool) => {
   return rows
 }
 
-// Returns the new attempt's id. Fails with ER_DUP_ENTRY when the request already has a
-// result or the cycle already has an attempt with this number.
+// Returns the new attempt's id. `reattemptFee` is the fee this failure obliges the student
+// to pay (null when none). Fails with ER_DUP_ENTRY when the request already has a result
+// or the cycle already has an attempt with this number.
 export const createAttempt = async (
-  { userId, cycleId, attemptNumber, examDateRequestId, examDate, result, recordedBy, recordedAt },
+  { userId, cycleId, attemptNumber, examDateRequestId, examDate, result, reattemptFee = null, recordedBy, recordedAt },
   db = pool,
 ) => {
   const [inserted] = await db.execute(
     `INSERT INTO licence_exam_attempts
-       (user_id, cycle_id, attempt_number, exam_date_request_id, exam_date, result, recorded_by, recorded_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [userId, cycleId, attemptNumber, examDateRequestId, examDate, result, recordedBy, recordedAt],
+       (user_id, cycle_id, attempt_number, exam_date_request_id, exam_date, result, reattempt_fee,
+        recorded_by, recorded_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [userId, cycleId, attemptNumber, examDateRequestId, examDate, result, reattemptFee, recordedBy, recordedAt],
   )
   return inserted.insertId
 }

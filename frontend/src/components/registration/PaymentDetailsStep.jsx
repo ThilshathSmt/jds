@@ -4,12 +4,7 @@ import FileUpload from './FileUpload'
 import PaymentInstructions from './PaymentInstructions'
 import PaymentSummary from './PaymentSummary'
 import StepActions from './StepActions'
-import {
-  PAYMENT_METHODS,
-  getMinimumPayment,
-  packages,
-  paymentMethods,
-} from '../../data/registrationData'
+import { PAYMENT_METHODS, getMinimumPayment, paymentMethods } from '../../data/registrationData'
 import { getReceiptError } from '../../utils/registrationValidation'
 
 const detailsByMethod = {
@@ -23,13 +18,15 @@ function PaymentDetailsStep({
   showErrors,
   submitting,
   submitError,
+  options,
   onChange,
   onBack,
   submitLabel = 'Submit Registration',
 }) {
-  const selectedPackage = packages.find(({ id }) => id === formData.packageId)
+  // Prices and the percentage are the backend's current ones (`options`)
+  const selectedPackage = options.packages.find(({ id }) => id === formData.packageId)
   // Step 3 is only reachable after a package is chosen; the fallback keeps rendering safe
-  const { minimumPayment, isFullPayment } = getMinimumPayment(selectedPackage?.price ?? 0)
+  const { minimumPayment, isFullPayment } = getMinimumPayment(selectedPackage?.price ?? 0, options)
   const MethodDetails = detailsByMethod[formData.paymentMethod]
   // A bad file is flagged as soon as it is chosen; other errors wait for a submit attempt
   const receiptError = showErrors ? errors.receipt : getReceiptError(formData.receipt)
@@ -39,7 +36,11 @@ function PaymentDetailsStep({
       {selectedPackage && (
         <div className="mb-6 space-y-4">
           <PaymentSummary selectedPackage={selectedPackage} minimumPayment={minimumPayment} />
-          <PaymentInstructions minimumPayment={minimumPayment} isFullPayment={isFullPayment} />
+          <PaymentInstructions
+            minimumPayment={minimumPayment}
+            isFullPayment={isFullPayment}
+            advancePaymentPercent={options.advancePaymentPercent}
+          />
         </div>
       )}
 

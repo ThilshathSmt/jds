@@ -15,6 +15,7 @@ import AdminExamDateRequestDetails from './pages/admin/ExamDateRequestDetails'
 import AdminNotifications from './pages/admin/Notifications'
 import AdminReattemptRequestDetails from './pages/admin/ReattemptRequestDetails'
 import ManageUsers from './pages/admin/ManageUsers'
+import PackagesSettings from './pages/admin/PackagesSettings'
 import RegistrationFormDetails from './pages/admin/RegistrationFormDetails'
 import RegistrationForms from './pages/admin/RegistrationForms'
 import ExamDateRequest from './pages/student/ExamDateRequest'
@@ -57,6 +58,7 @@ function App() {
           <Route path="registration-forms" element={<RegistrationForms />} />
           <Route path="registration-forms/:applicationId" element={<RegistrationFormDetails />} />
           <Route path="notifications" element={<AdminNotifications />} />
+          <Route path="packages-settings" element={<PackagesSettings />} />
           <Route path="notifications/:requestId" element={<AdminExamDateRequestDetails />} />
           <Route
             path="notifications/reattempt-payments/:reattemptRequestId"

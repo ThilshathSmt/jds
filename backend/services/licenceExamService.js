@@ -19,15 +19,16 @@
 // anything the browser sends.
 
 import pool from '../config/database.js'
-import { ATTEMPTS_PER_CYCLE, REATTEMPT_FEE } from '../config/licenceExam.js'
+import { ATTEMPTS_PER_CYCLE } from '../config/licenceExam.js'
 import * as examDateRequestModel from '../models/examDateRequestModel.js'
 import * as examReattemptRequestModel from '../models/examReattemptRequestModel.js'
 import * as licenceExamModel from '../models/licenceExamModel.js'
 import * as applicationModel from '../models/registrationApplicationModel.js'
 import * as userModel from '../models/userModel.js'
 import AppError from '../utils/AppError.js'
+import { getSettings } from './settingsService.js'
 
-export const FEE_TEXT = `LKR ${REATTEMPT_FEE.toLocaleString('en-US')}`
+export const formatFee = (amount) => `LKR ${amount.toLocaleString('en-US')}`
 
 // A failure that used the last attempt of its cycle exhausts the cycle: the account is
 // locked until a reapplication is approved
@@ -38,22 +39,23 @@ export const exhaustsCycle = (attemptNumber) => attemptNumber >= ATTEMPTS_PER_CY
 export const requiresReattemptFee = (attemptNumber) => !exhaustsCycle(attemptNumber)
 
 // What the student is told for each state. The same text is used when a request is refused.
-const MESSAGES = {
+// `fee` is the reattempt fee that applies (the obligation's own amount when one is owed).
+const getMessages = (fee) => ({
   PASSED: 'Congratulations! You have passed your driving licence examination. No further examination requests are needed.',
   DATE_REQUEST_PENDING:
     'You already have an exam date request awaiting admin review. You can submit a new request once it has been reviewed.',
   RESULT_PENDING:
     'Your examination date has been approved. You can request another date after the result of that examination has been recorded.',
-  REATTEMPT_PAYMENT_REQUIRED: `Your examination attempt was unsuccessful. Please pay the ${FEE_TEXT} reattempt fee and upload your payment receipt. You can request another examination date after your payment is approved.`,
+  REATTEMPT_PAYMENT_REQUIRED: `Your examination attempt was unsuccessful. Please pay the ${formatFee(fee)} reattempt fee and upload your payment receipt. You can request another examination date after your payment is approved.`,
   REATTEMPT_PAYMENT_PENDING:
     'Your reattempt payment is awaiting verification by the school. You can request another examination date after it is approved.',
-  REATTEMPT_PAYMENT_REJECTED: `Your reattempt payment was not approved. Review the reason, then upload valid proof of the ${FEE_TEXT} payment again.`,
+  REATTEMPT_PAYMENT_REJECTED: `Your reattempt payment was not approved. Review the reason, then upload valid proof of the ${formatFee(fee)} payment again.`,
   REAPPLICATION_REQUIRED: `You have used all ${ATTEMPTS_PER_CYCLE} examination attempts. Submit a new registration application with a new medical report, choose a package and make the registration payment. Your account will be reactivated after admin approval.`,
   REAPPLICATION_PENDING:
     'Your new application is awaiting review by the school. Your account stays locked until it is approved.',
   REAPPLICATION_REJECTED:
     'Your new application was not approved. Your account stays locked. Review the reason and submit a new application with a new medical report.',
-}
+})
 
 const canRequestMessage = (used, remaining) => {
   if (used === 0) return `You have ${remaining} attempts available. Request an examination date when you are ready.`
@@ -116,6 +118,9 @@ export const getSummary = async (userId, db = pool) => {
   const owing = Boolean(failedAttempt) && !paid
 
   // Locked after a third failure, until a reapplication is approved
+  // What a payment is for: the amount fixed when the failure was recorded
+  const reattemptFee = failedAttempt?.reattempt_fee ?? (await getSettings(db)).reattemptFee
+
   const user = await userModel.findById(userId, db)
   const locked = Boolean(user) && user.locked_at !== null
   const reapplication = locked
@@ -148,7 +153,7 @@ export const getSummary = async (userId, db = pool) => {
     internal: { cycle, used, failedAttempt: owing ? failedAttempt : null },
     summary: {
       status,
-      message: MESSAGES[status] ?? canRequestMessage(used, remaining),
+      message: getMessages(reattemptFee)[status] ?? canRequestMessage(used, remaining),
       cycleNumber: cycle.cycle_number,
       attemptsPerCycle: ATTEMPTS_PER_CYCLE,
       attemptsUsed: used,
@@ -171,7 +176,8 @@ export const getSummary = async (userId, db = pool) => {
       // The account is locked: only an approved reapplication gives it access again
       locked,
       reapplication: reapplication ? { id: reapplication.id, status: reapplication.status } : null,
-      reattemptFee: REATTEMPT_FEE,
+      // The fee owed for the current failure (its own amount), or else the fee in force now
+      reattemptFee,
       // For the most recent failure. NOT_REQUIRED: nothing owed (no failure, or passed)
       // REQUIRED: owed, nothing submitted | PENDING: awaiting verification
       // REJECTED: must be submitted again | APPROVED: paid and verified

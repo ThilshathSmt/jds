@@ -1,5 +1,5 @@
 import { EXAM_RESULTS } from '../config/licenceExam.js'
-import { PAYMENT_METHODS, findPackageById } from '../config/packages.js'
+import { PAYMENT_METHODS } from '../config/packages.js'
 import AppError from './AppError.js'
 import { addDays, getSchoolDate, isTuesday, isValidDate } from './dateUtils.js'
 
@@ -166,17 +166,28 @@ export const validateProvisionInput = (body = {}) => {
   return { role }
 }
 
+// A whole number from a JSON number or a form field string; NaN when it is not one
+const asWholeNumber = (value) => {
+  const text = typeof value === 'number' ? String(value) : asTrimmedString(value)
+  return /^\d+$/.test(text) ? Number(text) : Number.NaN
+}
+
 // The Apply Now form. Only these fields are read: a status, price or Driving School ID
-// sent by the client is ignored.
+// sent by the client is ignored. Whether the package exists and is offered is checked
+// against the database by the service. `quotedMinimumPayment` (optional) is the amount the
+// form showed: it is only compared with the server's own amount, never used as it.
 export const validateApplicationInput = (body = {}) => {
+  // A JSON number or a form field string; empty or missing means no quote was sent
+  const quoted = typeof body.quotedMinimumPayment === 'number' ? body.quotedMinimumPayment : asTrimmedString(body.quotedMinimumPayment)
   const input = {
     fullName: asTrimmedString(body.fullName),
     mobileNumber: asTrimmedString(body.mobile),
     email: asTrimmedString(body.email).toLowerCase() || null,
     nic: asTrimmedString(body.nic).toUpperCase(),
     address: asTrimmedString(body.address),
-    packageId: Number(asTrimmedString(body.packageId)),
+    packageId: asWholeNumber(body.packageId),
     paymentMethod: asTrimmedString(body.paymentMethod),
+    quotedMinimumPayment: quoted === '' ? null : asWholeNumber(quoted),
   }
   const errors = {}
 
@@ -189,7 +200,10 @@ export const validateApplicationInput = (body = {}) => {
   if (!NIC_PATTERN.test(input.nic)) errors.nic = 'Enter a valid NIC: 9 digits + V or 12 digits.'
   if (!input.address) errors.address = 'Address is required.'
   else if (input.address.length > 500) errors.address = 'Address must be 500 characters or fewer.'
-  if (!findPackageById(input.packageId)) errors.packageId = 'Please select a package to continue.'
+  if (!Number.isSafeInteger(input.packageId) || input.packageId < 1) {
+    errors.packageId = 'Please select a package to continue.'
+  }
+  if (Number.isNaN(input.quotedMinimumPayment)) input.quotedMinimumPayment = null
   if (!PAYMENT_METHODS.includes(input.paymentMethod)) {
     errors.paymentMethod = 'Please select a payment method.'
   }
@@ -390,4 +404,52 @@ export const validateAnswerInput = (body = {}) => {
 export const parseId = (value) => {
   if (!/^[1-9][0-9]{0,9}$/.test(String(value))) throw new AppError(404, 'Record not found.')
   return Number(value)
+}
+
+// ---- Packages & Exam Penalties (admin)
+
+const PACKAGE_NAME_MAX_LENGTH = 150
+// Whole rupees; the upper limits only catch typing mistakes
+const PACKAGE_PRICE_MAX = 10_000_000
+const REATTEMPT_FEE_MAX = 1_000_000
+
+// A package being created or edited: { name, price, isActive }
+export const validatePackageInput = (body = {}) => {
+  const input = {
+    name: asTrimmedString(body.name).replace(/\s+/g, ' '),
+    price: asWholeNumber(body.price),
+    isActive: body.isActive === undefined ? true : body.isActive,
+  }
+  const errors = {}
+  if (!input.name) errors.name = 'Package name is required.'
+  else if (input.name.length > PACKAGE_NAME_MAX_LENGTH) {
+    errors.name = `Package name must be ${PACKAGE_NAME_MAX_LENGTH} characters or fewer.`
+  }
+  if (!Number.isSafeInteger(input.price) || input.price < 1 || input.price > PACKAGE_PRICE_MAX) {
+    errors.price = `Enter a price in whole rupees between 1 and ${PACKAGE_PRICE_MAX.toLocaleString('en-US')}.`
+  }
+  if (typeof input.isActive !== 'boolean') errors.isActive = 'Active must be true or false.'
+  throwIfInvalid(errors)
+  return input
+}
+
+// The settings being changed: any of { advancePaymentPercent, reattemptFee }
+export const validateSettingsInput = (body = {}) => {
+  const input = {}
+  const errors = {}
+  if (body.advancePaymentPercent !== undefined) {
+    input.advancePaymentPercent = asWholeNumber(body.advancePaymentPercent)
+    if (!(input.advancePaymentPercent >= 1 && input.advancePaymentPercent <= 100)) {
+      errors.advancePaymentPercent = 'Enter a whole percentage from 1 to 100.'
+    }
+  }
+  if (body.reattemptFee !== undefined) {
+    input.reattemptFee = asWholeNumber(body.reattemptFee)
+    if (!(input.reattemptFee >= 1 && input.reattemptFee <= REATTEMPT_FEE_MAX)) {
+      errors.reattemptFee = `Enter a fee in whole rupees between 1 and ${REATTEMPT_FEE_MAX.toLocaleString('en-US')}.`
+    }
+  }
+  if (Object.keys(input).length === 0) throw new AppError(400, 'Nothing to update.')
+  throwIfInvalid(errors)
+  return input
 }

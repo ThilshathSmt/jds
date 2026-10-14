@@ -3,7 +3,6 @@
 
 import path from 'node:path'
 import { withTransaction } from '../config/database.js'
-import { findPackageById, getMinimumPayment } from '../config/packages.js'
 import * as applicationDocumentModel from '../models/applicationDocumentModel.js'
 import * as drivingSchoolIdModel from '../models/drivingSchoolIdModel.js'
 import * as applicationModel from '../models/registrationApplicationModel.js'
@@ -16,6 +15,7 @@ import {
 } from '../utils/fileUtils.js'
 import { issueDrivingSchoolId } from './provisioningService.js'
 import * as reapplicationService from './reapplicationService.js'
+import { quoteRegistration } from './settingsService.js'
 
 const NOT_FOUND = 'Registration application not found.'
 const REAPPLICATION = 'REAPPLICATION'
@@ -71,7 +71,8 @@ const loadDetails = async (id) => {
 }
 
 // Public: store a new application with its receipt. Status always starts as NEW;
-// the package name, price and minimum payment come from the server's own catalogue.
+// the package name, price and minimum payment are copied from the database's current
+// package and advance payment setting (settingsService.quoteRegistration).
 export const submit = async (input, file) => {
   const mimeType = RECEIPT_TYPES[path.extname(file.originalname).toLowerCase()]
   if (!(await hasValidSignature(file.path, mimeType))) {
@@ -79,17 +80,9 @@ export const submit = async (input, file) => {
     throw new AppError(400, message, { receipt: message })
   }
 
-  const selectedPackage = findPackageById(input.packageId)
   const applicationId = await withTransaction(async (db) => {
-    const newId = await applicationModel.create(
-      {
-        ...input,
-        packageName: selectedPackage.name,
-        packagePrice: selectedPackage.price,
-        minimumPayment: getMinimumPayment(selectedPackage.price),
-      },
-      db,
-    )
+    const terms = await quoteRegistration(input.packageId, input.quotedMinimumPayment, db)
+    const newId = await applicationModel.create({ ...input, ...terms }, db)
     await applicationDocumentModel.create(
       {
         applicationId: newId,

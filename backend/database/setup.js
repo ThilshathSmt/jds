@@ -99,6 +99,12 @@ const ADDED_COLUMNS = [
     column: 'new_medical_report_confirmed',
     definition: 'TINYINT(1) NULL AFTER pending',
   },
+  // The reattempt fee owed for a failed first or second attempt, fixed when it is recorded
+  {
+    table: 'licence_exam_attempts',
+    column: 'reattempt_fee',
+    definition: 'INT UNSIGNED NULL AFTER result',
+  },
   // The new medical report a cycle started from (NULL for first cycles and older ones)
   {
     table: 'exam_attempt_cycles',
@@ -132,6 +138,13 @@ const BACKFILLS = [
       SET r.failed_attempt_id = a.id
     WHERE r.failed_attempt_id IS NULL`,
   "UPDATE exam_reattempt_requests SET approved = 1 WHERE status = 'APPROVED' AND approved IS NULL",
+  // Failures recorded before the fee was stored with them: the amount already submitted for
+  // them, or else the fee that applied then (LKR 2,000)
+  `UPDATE licence_exam_attempts a
+      SET a.reattempt_fee = COALESCE(
+            (SELECT MAX(r.fee_amount) FROM exam_reattempt_requests r WHERE r.failed_attempt_id = a.id),
+            2000)
+    WHERE a.result = 'FAILED' AND a.attempt_number < 3 AND a.reattempt_fee IS NULL`,
   // A cycle started by an approved reapplication uses that application's medical report
   `UPDATE exam_attempt_cycles c
       SET c.medical_report_document_id = (

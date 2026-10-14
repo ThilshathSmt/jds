@@ -1,6 +1,7 @@
 // Static data for the online registration flow.
-// NOTE: packages and the payment rule are mirrored in backend/config/packages.js, which is
-// what the server trusts. Keep the two in step until packages are loaded from the API.
+// The packages, their prices and the advance payment percentage are NOT here: they are
+// managed by the admins and loaded from the API (see useRegistrationOptions). The backend
+// works out every amount itself; the calculation below only shows the student the same one.
 
 export const registrationSteps = [
   { id: 1, label: 'Your Details' },
@@ -8,29 +9,26 @@ export const registrationSteps = [
   { id: 3, label: 'Payment Details' },
 ]
 
-// Placeholder packages and fees
-export const packages = [
-  { id: 1, name: 'All Cars / Dual Purpose – Manual / Auto (B)', price: 40000 },
-  { id: 2, name: 'VIP Course (Pick & Drop)', price: 60000 },
-  { id: 3, name: 'Motorcycle (A, A-1)', price: 12500 },
-  { id: 4, name: '1 Hour Individual Lesson (B)', price: 3500 },
-  { id: 5, name: 'Theory Class', price: 3000 },
-]
-
 export const formatAmount = (amount) => `Rs. ${amount.toLocaleString('en-US')}`
 export const formatPrice = (price) => `${formatAmount(price)}/=`
 
-// Registration payment rule: packages up to the threshold are paid in full,
-// more expensive packages need at least MINIMUM_PAYMENT_RATE of the price up front.
-export const FULL_PAYMENT_THRESHOLD = 10000
-export const MINIMUM_PAYMENT_RATE = 0.4
-
-export const getMinimumPayment = (price) => {
-  const isFullPayment = price <= FULL_PAYMENT_THRESHOLD
+// The registration payment rule, with the values from the API ({ advancePaymentPercent,
+// fullPaymentThreshold }): packages up to the threshold are paid in full, more expensive
+// ones need at least the configured percentage of the price up front. Mirrors
+// backend/config/packages.js getMinimumPayment, which decides the amount actually recorded.
+export const getMinimumPayment = (price, { advancePaymentPercent, fullPaymentThreshold }) => {
+  const isFullPayment = price <= fullPaymentThreshold
   return {
     isFullPayment,
-    minimumPayment: isFullPayment ? price : Math.round(price * MINIMUM_PAYMENT_RATE),
+    minimumPayment: isFullPayment ? price : Math.round((price * advancePaymentPercent) / 100),
   }
+}
+
+// The minimum payment the form shows for the chosen package. Sent with the application
+// only so the backend can tell when its own (authoritative) amount differs from it.
+export const getQuotedMinimumPayment = (options, packageId) => {
+  const selected = options.packages.find(({ id }) => id === packageId)
+  return selected ? getMinimumPayment(selected.price, options).minimumPayment : ''
 }
 
 export const PAYMENT_METHODS = {

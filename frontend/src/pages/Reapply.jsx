@@ -19,6 +19,9 @@ import PersonalDetailsStep from '../components/registration/PersonalDetailsStep'
 import RegistrationProgress from '../components/registration/RegistrationProgress'
 import StepActions from '../components/registration/StepActions'
 import { getReapplicationStatus, submitReapplication } from '../services/reapplicationApi'
+import { TERMS_CHANGED } from '../services/settingsApi'
+import useRegistrationOptions from '../utils/useRegistrationOptions'
+import { getQuotedMinimumPayment } from '../data/registrationData'
 import { formatDateTime } from '../utils/formatUtils'
 import {
   validateStep1,
@@ -122,6 +125,7 @@ const steps = [
   { id: 4, label: 'Payment Details' },
 ]
 const LAST_STEP = steps.length
+const PACKAGE_STEP = 3
 
 // The answer to "Have you obtained a new medical report?": '' until chosen, then 'yes' or
 // 'no'. Only an explicit yes continues; the backend checks the same answer again.
@@ -211,6 +215,8 @@ const stepComponents = {
 // payment for it. No examination reattempt fee is part of it.
 // `onSubmitted(status)` receives the new status.
 function ReapplicationForm({ credentials, status, onSubmitted }) {
+  // The active packages and advance payment rule: the same ones the Apply Now form shows
+  const { options, error: optionsError, reload } = useRegistrationOptions()
   const [currentStep, setCurrentStep] = useState(1)
   const [formData, setFormData] = useState({
     ...emptyDetails,
@@ -227,7 +233,10 @@ function ReapplicationForm({ credentials, status, onSubmitted }) {
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
 
-  const errors = stepValidators[currentStep](formData)
+  // A package chosen earlier that is no longer offered (after a reload) counts as not chosen
+  const packageOffered = options?.packages.some(({ id }) => id === formData.packageId) ?? false
+  const effectiveData = packageOffered ? formData : { ...formData, packageId: '' }
+  const errors = stepValidators[currentStep](effectiveData)
   const StepComponent = stepComponents[currentStep]
 
   const updateField = (field, value) => {
@@ -245,6 +254,8 @@ function ReapplicationForm({ credentials, status, onSubmitted }) {
     if (submitting) return
     if (Object.keys(errors).length > 0) {
       setShowErrors(true)
+      // The chosen package has been withdrawn: choose again
+      if (currentStep > PACKAGE_STEP && !packageOffered) goToStep(PACKAGE_STEP)
       return
     }
     if (currentStep < LAST_STEP) goToStep(currentStep + 1)
@@ -255,12 +266,19 @@ function ReapplicationForm({ credentials, status, onSubmitted }) {
     setSubmitting(true)
     setSubmitError('')
     try {
-      onSubmitted(await submitReapplication({ credentials, formData }))
+      onSubmitted(
+        await submitReapplication({
+          credentials,
+          formData: { ...formData, quotedMinimumPayment: getQuotedMinimumPayment(options, formData.packageId) },
+        }),
+      )
     } catch (error) {
       setConfirming(false)
       // A field the server refused may be on an earlier step: name it in the message
       const fieldMessages = Object.values(error.fieldErrors ?? {})
       setSubmitError(fieldMessages.length > 0 ? `${error.message} ${fieldMessages.join(' ')}` : error.message)
+      // The price or the percentage changed meanwhile: show the new amount
+      if (error.code === TERMS_CHANGED || error.fieldErrors?.packageId) reload()
     } finally {
       setSubmitting(false)
     }
@@ -278,6 +296,11 @@ function ReapplicationForm({ credentials, status, onSubmitted }) {
           : 'Complete each step as you would for a new registration. Your Driving School ID stays the same.'}
       </p>
       <RegistrationProgress currentStep={currentStep} steps={steps} />
+      {!options ? (
+        <p role={optionsError ? 'alert' : 'status'} className="py-6 text-center text-gray-600">
+          {optionsError || 'Loading registration details...'}
+        </p>
+      ) : (
       <form
         noValidate
         onSubmit={(event) => {
@@ -286,7 +309,8 @@ function ReapplicationForm({ credentials, status, onSubmitted }) {
         }}
       >
         <StepComponent
-          formData={formData}
+          formData={effectiveData}
+          options={options}
           errors={errors}
           showErrors={showErrors}
           submitting={submitting}
@@ -297,6 +321,7 @@ function ReapplicationForm({ credentials, status, onSubmitted }) {
           onBack={() => goToStep(currentStep - 1)}
         />
       </form>
+      )}
 
       {confirming && (
         <ConfirmDialog

@@ -6,10 +6,12 @@ const ADMIN_PATH = '/api/admin/registration-forms'
 
 // Public. Sends what the Apply Now form collected, with the receipt file, as multipart/form-data.
 // Only the package id is sent: the backend looks up the price and sets the status itself.
+// `quotedMinimumPayment` is the amount the form showed; the backend only compares it with
+// its own and refuses (TERMS_CHANGED) when they differ, it never charges it.
 export const submitApplication = async (formData) => {
   const body = new FormData()
-  for (const field of ['fullName', 'mobile', 'email', 'nic', 'address', 'packageId', 'paymentMethod']) {
-    body.append(field, formData[field])
+  for (const field of ['fullName', 'mobile', 'email', 'nic', 'address', 'packageId', 'paymentMethod', 'quotedMinimumPayment']) {
+    body.append(field, formData[field] ?? '')
   }
   body.append('receipt', formData.receipt)
 
