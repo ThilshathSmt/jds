@@ -7,7 +7,8 @@
 //   nothing about an account is revealed without them.
 //   A reapplication is a new registration application, like a first-time one: the
 //   student's details, a package chosen from the catalogue, its minimum registration
-//   payment with the receipt, and also a new medical report. It never includes the
+//   payment with the receipt, and also the student's confirmation that they have obtained
+//   a new medical report (the report itself is checked by the school). It never includes the
 //   examination reattempt fee: a third failure costs none. It stays NEW until an admin
 //   decides:
 //     approve -> the same account is unlocked and a new cycle of three attempts starts
@@ -33,6 +34,7 @@ import * as licenceExamModel from '../models/licenceExamModel.js'
 import * as applicationModel from '../models/registrationApplicationModel.js'
 import * as userModel from '../models/userModel.js'
 import AppError from '../utils/AppError.js'
+import { MEDICAL_REPORT_NOT_OBTAINED_MESSAGE } from '../utils/validationUtils.js'
 import { RECEIPT_TYPES, hasValidSignature } from '../utils/fileUtils.js'
 import { verifyCredentials } from './authService.js'
 import { getAttemptHistory, lockCurrentCycle } from './licenceExamService.js'
@@ -48,10 +50,12 @@ const DECIDED_MESSAGES = {
   REJECTED: 'This application has already been rejected and cannot be changed.',
 }
 
-// The upload fields of the form and the application document each one becomes
-const MEDICAL_REPORT = { field: 'medicalReport', type: 'medical_report', label: 'new medical report' }
+// The upload field of the form and the application document it becomes. The new medical
+// report is not uploaded: the student confirms they have obtained it. (Older
+// reapplications carry it as a 'medical_report' document.)
+const MEDICAL_REPORT_TYPE = 'medical_report'
 const RECEIPT = { field: 'receipt', type: 'payment_receipt', label: 'payment receipt/document' }
-const REQUIRED_DOCUMENTS = [MEDICAL_REPORT, RECEIPT]
+const REQUIRED_DOCUMENTS = [RECEIPT]
 
 // What a document of a reapplication is waiting for: it is verified by the admin's
 // decision on the application, like the receipt of a first-time application
@@ -137,13 +141,18 @@ const checkFiles = async (files, required) => {
   }
 }
 
-// Saves the reapplication for the existing account, with the new medical report and the
-// registration payment receipt, and tells the admins: all in one transaction. Nothing is
+// Saves the reapplication for the existing account, with the medical report confirmation
+// (already checked by validateReapplicationInput) and the registration payment receipt, and tells the admins: all in one transaction. Nothing is
 // unlocked by it. Returns `{ status, unusedFiles }`: any other file sent with the form is
 // not saved, and the caller removes it.
 export const submit = async (credentials, input, files = {}) => {
   const user = await verifyLockedStudent(credentials)
   if (!(await findExhaustedCycle(user.id))) throw new AppError(409, NOT_LOCKED)
+  if (input.newMedicalReportConfirmed !== true) {
+    throw new AppError(400, MEDICAL_REPORT_NOT_OBTAINED_MESSAGE, {
+      newMedicalReportConfirmed: MEDICAL_REPORT_NOT_OBTAINED_MESSAGE,
+    })
+  }
   await checkFiles(files, REQUIRED_DOCUMENTS)
 
   // The package and what must be paid for it come from the server's own catalogue
@@ -163,6 +172,8 @@ export const submit = async (credentials, input, files = {}) => {
         {
           userId: user.id,
           ...input,
+          // Never saved without an explicit confirmation, whoever calls this
+          newMedicalReportConfirmed: input.newMedicalReportConfirmed === true,
           packageId: selectedPackage.id,
           packageName: selectedPackage.name,
           packagePrice: selectedPackage.price,
@@ -267,7 +278,10 @@ export const getReviewDetails = async (application) => {
     startedCycle: startedCycle ? toCycle(startedCycle) : null,
     attempts: await getAttemptHistory(application.user_id),
     medicalReport: {
-      submitted: documents.some((document) => document.document_type === MEDICAL_REPORT.type),
+      // The student's answer to "Have you obtained a new medical report?"
+      confirmed: application.new_medical_report_confirmed === 1,
+      // Only older reapplications have the report as an uploaded document
+      uploaded: documents.some((document) => document.document_type === MEDICAL_REPORT_TYPE),
       status: verification,
     },
     registrationPayment: {
@@ -311,7 +325,8 @@ const findLegacyPayment = async (application, db) =>
     (request) => request.reapplication_id === application.id && request.status === 'PENDING',
   ) ?? null
 
-// The admin has reviewed the new medical report and the registration payment. The same
+// The admin has verified the new medical report (through the school's own process) and the
+// registration payment. The same
 // account is unlocked, with the same Driving School ID, and starts a new cycle of three
 // attempts. Earlier cycles, results, applications and payments are not touched.
 export const approve = async (id, adminId, now = new Date()) => {
@@ -330,10 +345,10 @@ export const approve = async (id, adminId, now = new Date()) => {
         throw new AppError(409, `This student has not used all ${ATTEMPTS_PER_CYCLE} attempts of the current cycle.`)
       }
       const documents = await applicationDocumentModel.findByApplicationId(id, db)
-      // The newest one, should there ever be more than one
-      const medicalReport = documents.findLast((document) => document.document_type === MEDICAL_REPORT.type)
-      if (!medicalReport) {
-        throw new AppError(409, 'This application has no new medical report and cannot be approved.')
+      // Confirmed by the student (or, on older reapplications, uploaded)
+      const medicalReport = documents.findLast((document) => document.document_type === MEDICAL_REPORT_TYPE)
+      if (application.new_medical_report_confirmed !== 1 && !medicalReport) {
+        throw new AppError(409, 'The student has not confirmed obtaining a new medical report, so this application cannot be approved.')
       }
       if (!documents.some((document) => document.document_type === RECEIPT.type)) {
         throw new AppError(409, 'This application has no registration payment receipt and cannot be approved.')
@@ -357,7 +372,7 @@ export const approve = async (id, adminId, now = new Date()) => {
           userId: user.id,
           cycleNumber: current.cycle_number + 1,
           applicationId: id,
-          medicalReportDocumentId: medicalReport.id,
+          medicalReportDocumentId: medicalReport?.id ?? null,
         },
         db,
       )

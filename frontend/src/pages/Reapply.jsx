@@ -12,7 +12,6 @@ import {
 } from 'react-icons/fa6'
 import ConfirmDialog from '../components/admin/ConfirmDialog'
 import PasswordInput from '../components/auth/PasswordInput'
-import FileUpload from '../components/registration/FileUpload'
 import FormField from '../components/registration/FormField'
 import PackageDetailsStep from '../components/registration/PackageDetailsStep'
 import PaymentDetailsStep from '../components/registration/PaymentDetailsStep'
@@ -22,7 +21,6 @@ import StepActions from '../components/registration/StepActions'
 import { getReapplicationStatus, submitReapplication } from '../services/reapplicationApi'
 import { formatDateTime } from '../utils/formatUtils'
 import {
-  getReceiptError,
   validateStep1,
   validateStep2,
   validateStep3,
@@ -125,11 +123,21 @@ const steps = [
 ]
 const LAST_STEP = steps.length
 
-const validateMedicalReport = ({ medicalReport }) => {
-  if (!medicalReport) return { medicalReport: 'Please upload your new medical report.' }
-  const error = getReceiptError(medicalReport)
-  return error ? { medicalReport: error } : {}
+// The answer to "Have you obtained a new medical report?": '' until chosen, then 'yes' or
+// 'no'. Only an explicit yes continues; the backend checks the same answer again.
+export const MEDICAL_REPORT_NOT_OBTAINED =
+  'Please obtain a new medical report before continuing with your reapplication.'
+
+const validateMedicalReport = ({ newMedicalReportConfirmed }) => {
+  if (newMedicalReportConfirmed === 'yes') return {}
+  if (newMedicalReportConfirmed === 'no') return { newMedicalReportConfirmed: MEDICAL_REPORT_NOT_OBTAINED }
+  return { newMedicalReportConfirmed: 'Please answer whether you have obtained a new medical report.' }
 }
+
+const medicalReportOptions = [
+  { value: 'yes', label: 'Yes, I have obtained a new medical report.' },
+  { value: 'no', label: 'No, I have not obtained a new medical report.' },
+]
 
 const stepValidators = {
   1: validateStep1,
@@ -138,24 +146,55 @@ const stepValidators = {
   4: validateStep3,
 }
 
-// Step 2: the new medical report, required after every exhausted cycle
-function MedicalReportStep({ formData, errors, showErrors, attemptsPerCycle, onChange, onBack }) {
-  const error = showErrors ? errors.medicalReport : getReceiptError(formData.medicalReport)
+// Step 2: the student confirms they have obtained a new medical report, required after
+// every exhausted cycle. The report itself is checked by the school, not uploaded here.
+function MedicalReportStep({ formData, errors, attemptsPerCycle, onChange, onBack }) {
+  const answer = formData.newMedicalReportConfirmed
+  // "No" is explained at once; an unanswered question only keeps the button disabled
+  const error = answer === 'no' ? errors.newMedicalReportConfirmed : undefined
   return (
     <>
-      <p className="mb-4 flex items-start gap-3 rounded-lg bg-brand-soft px-4 py-3 text-ink">
+      <p className="mb-5 flex items-start gap-3 rounded-lg bg-brand-soft px-4 py-3 text-ink">
         <FaFileMedical aria-hidden="true" className="mt-1 shrink-0 text-brand" />
         A new medical report is required after {attemptsPerCycle} unsuccessful examination
-        attempts. The school reviews it with your application.
+        attempts. The school verifies it with your application.
       </p>
-      <FileUpload
-        id="medicalReport"
-        label="Upload New Medical Report"
-        file={formData.medicalReport}
-        error={error}
-        onChange={(file) => onChange('medicalReport', file)}
-      />
-      <StepActions onBack={onBack} />
+      <fieldset aria-describedby="newMedicalReportConfirmed-error">
+        <legend className="mb-3 font-semibold text-ink">
+          Have you obtained a new medical report?
+          <span className="text-brand" aria-hidden="true">
+            {' '}
+            *
+          </span>
+        </legend>
+        <div className="space-y-3">
+          {medicalReportOptions.map(({ value, label }) => (
+            <label
+              key={value}
+              className={`flex cursor-pointer items-center gap-4 rounded-xl border-2 p-4 transition has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-brand ${
+                answer === value ? 'border-brand bg-brand-soft' : 'border-gray-200 bg-white hover:border-brand/40'
+              }`}
+            >
+              <input
+                type="radio"
+                name="newMedicalReportConfirmed"
+                value={value}
+                checked={answer === value}
+                onChange={() => onChange('newMedicalReportConfirmed', value)}
+                className="h-5 w-5 shrink-0 accent-brand"
+              />
+              <span className="font-medium text-ink">{label}</span>
+            </label>
+          ))}
+        </div>
+        <p id="newMedicalReportConfirmed-error" role="alert" className="mt-2 min-h-5 text-sm text-danger">
+          {error}
+        </p>
+      </fieldset>
+      {!answer && (
+        <p className="mt-2 text-right text-sm text-gray-500">Answer the question to continue.</p>
+      )}
+      <StepActions onBack={onBack} nextDisabled={answer !== 'yes'} />
     </>
   )
 }
@@ -168,7 +207,7 @@ const stepComponents = {
 }
 
 // The new registration application, like a first-time one: details (started from what the
-// student gave before), a new medical report, a package and the normal registration
+// student gave before), a new medical report confirmation, a package and the normal registration
 // payment for it. No examination reattempt fee is part of it.
 // `onSubmitted(status)` receives the new status.
 function ReapplicationForm({ credentials, status, onSubmitted }) {
@@ -176,7 +215,8 @@ function ReapplicationForm({ credentials, status, onSubmitted }) {
   const [formData, setFormData] = useState({
     ...emptyDetails,
     ...status.details,
-    medicalReport: null,
+    // Never assumed: the student must choose
+    newMedicalReportConfirmed: '',
     packageId: '',
     paymentMethod: '',
     receipt: null,
@@ -261,7 +301,7 @@ function ReapplicationForm({ credentials, status, onSubmitted }) {
       {confirming && (
         <ConfirmDialog
           title="Submit new application?"
-          message={`Your new application will be sent to the school for review with your new medical report and your registration payment receipt. Your account ${status.student.drivingSchoolId} stays locked until the school approves it.`}
+          message={`Your new application will be sent to the school for review with your confirmation of a new medical report and your registration payment receipt. Your account ${status.student.drivingSchoolId} stays locked until the school approves it.`}
           confirmLabel="Submit"
           busy={submitting}
           onConfirm={submit}

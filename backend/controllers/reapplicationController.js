@@ -22,8 +22,8 @@ export const getStatus = async (req, res) => {
 }
 
 // Public: POST /api/reapplications (multipart/form-data): the credentials, the
-// application details, the package and payment method, medicalReport (file) and receipt
-// (file: the registration payment for the package)
+// application details, the package and payment method, newMedicalReportConfirmed ('yes')
+// and receipt (file: the registration payment for the package)
 export const submit = async (req, res) => {
   const uploaded = Object.values(req.files ?? {}).flat()
   try {
