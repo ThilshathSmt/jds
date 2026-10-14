@@ -3,8 +3,11 @@ import { studentDashboard } from '../controllers/dashboardController.js'
 import * as examAttemptController from '../controllers/examAttemptController.js'
 import * as examController from '../controllers/examController.js'
 import * as examDateRequestController from '../controllers/examDateRequestController.js'
+import * as examReattemptRequestController from '../controllers/examReattemptRequestController.js'
+import * as reapplicationController from '../controllers/reapplicationController.js'
 import { requireAuth } from '../middleware/authMiddleware.js'
 import { requireRole } from '../middleware/roleMiddleware.js'
+import { uploadReattemptDocuments } from '../middleware/uploadMiddleware.js'
 
 const router = Router()
 
@@ -32,5 +35,22 @@ router.get('/exam-attempts/:attemptId/result', examAttemptController.getResult)
 router.get('/exam-date-requests', examDateRequestController.listOwn)
 router.post('/exam-date-requests', examDateRequestController.submit)
 router.get('/exam-date-requests/:id', examDateRequestController.getOwn)
+
+// The physical examination attempts of the signed-in student: where they stand, the
+// history, and the reattempt payments they submit after a failed attempt
+router.get('/licence-exam', examReattemptRequestController.getOverview)
+router.post(
+  '/licence-exam/reattempt-requests',
+  uploadReattemptDocuments,
+  examReattemptRequestController.submit,
+)
+router.get('/licence-exam/reattempt-requests/:id', examReattemptRequestController.getOwn)
+router.get(
+  '/licence-exam/reattempt-requests/:id/documents/:documentId',
+  examReattemptRequestController.getOwnDocument,
+)
+
+// A reapplication the student made while locked out, for the notification about it
+router.get('/reapplications/:id', reapplicationController.getOwn)
 
 export default router

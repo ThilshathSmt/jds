@@ -4,10 +4,10 @@
 import pool from '../config/database.js'
 
 const USER_COLUMNS =
-  'id, driving_school_id, name, email, password_hash, role, status, session_version, created_at, updated_at'
+  'id, driving_school_id, name, email, password_hash, role, status, session_version, locked_at, created_at, updated_at'
 
 // Columns for admin listings: never the password hash
-const LIST_COLUMNS = 'id, driving_school_id, name, email, role, status, created_at'
+const LIST_COLUMNS = 'id, driving_school_id, name, email, role, status, locked_at, created_at'
 
 const findOne = async (db, where, value, { forUpdate = false } = {}) => {
   const [rows] = await db.execute(
@@ -76,6 +76,12 @@ export const findActiveIdsByRole = async (role, db = pool) => {
 
 export const updateStatus =async (id, status, db = pool) => {
   await db.execute('UPDATE users SET status = ? WHERE id = ?', [status, id])
+}
+
+// Locks the account until a reapplication is approved (`lockedAt` is the time), or
+// unlocks it (null). Has nothing to do with `status`.
+export const setLocked = async (id, lockedAt, db = pool) => {
+  await db.execute('UPDATE users SET locked_at = ? WHERE id = ?', [lockedAt, id])
 }
 
 // Makes every login token issued so far for this user invalid

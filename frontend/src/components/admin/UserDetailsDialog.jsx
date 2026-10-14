@@ -14,6 +14,14 @@ const getRows = (user) => {
     { label: 'Email', value: user.email },
     { label: 'Role', value: <RoleBadge role={user.role} /> },
     { label: 'Account Status', value: <StatusBadge status={formatStatus(user.status)} /> },
+    ...(user.locked
+      ? [
+          {
+            label: 'Examination Lock',
+            value: 'Locked after three failed examination attempts. A reapplication must be approved (Registration Forms).',
+          },
+        ]
+      : []),
     { label: 'Created', value: formatDateTime(user.createdAt) },
     { label: 'Last Updated', value: formatDateTime(user.updatedAt) },
   ]

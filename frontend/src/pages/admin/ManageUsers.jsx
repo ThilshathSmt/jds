@@ -116,7 +116,14 @@ function ManageUsers() {
     {
       key: 'status',
       label: 'Account Status',
-      render: (row) => <StatusBadge status={formatStatus(row.status)} />,
+      // "Locked" is separate from active / inactive: three failed examination attempts,
+      // lifted only by approving the student's reapplication
+      render: (row) => (
+        <span className="flex flex-wrap items-center gap-1.5">
+          <StatusBadge status={formatStatus(row.status)} />
+          {row.locked && <StatusBadge status="REJECTED" label="Locked" />}
+        </span>
+      ),
     },
     { key: 'createdAt', label: 'Created Date', render: (row) => formatDate(row.createdAt) },
     {

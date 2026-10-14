@@ -8,6 +8,8 @@ function useAuthForm(initialValues, validate, onSubmit) {
   const [showErrors, setShowErrors] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState('')
+  // The backend's code for the error, when it gave one (for example a locked account)
+  const [formErrorCode, setFormErrorCode] = useState(null)
   const [serverErrors, setServerErrors] = useState({})
 
   // The browser's own checks take priority over what the server last reported
@@ -17,6 +19,7 @@ function useAuthForm(initialValues, validate, onSubmit) {
     setValues((current) => ({ ...current, [name]: value }))
     setServerErrors((current) => ({ ...current, [name]: undefined }))
     setFormError('')
+    setFormErrorCode(null)
   }
 
   const handleSubmit = async (event) => {
@@ -26,10 +29,12 @@ function useAuthForm(initialValues, validate, onSubmit) {
 
     setSubmitting(true)
     setFormError('')
+    setFormErrorCode(null)
     try {
       await onSubmit(values)
     } catch (error) {
       setFormError(error.message)
+      setFormErrorCode(error.code ?? null)
       setServerErrors(error.fieldErrors ?? {})
     } finally {
       setSubmitting(false)
@@ -47,7 +52,7 @@ function useAuthForm(initialValues, validate, onSubmit) {
     className: `form-input ${errors[name] ? 'form-input-error' : ''}`,
   })
 
-  return { values, errors, formError, submitting, setField, inputProps, handleSubmit }
+  return { values, errors, formError, formErrorCode, submitting, setField, inputProps, handleSubmit }
 }
 
 export default useAuthForm

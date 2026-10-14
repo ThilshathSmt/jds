@@ -12,6 +12,7 @@ import {
   FaUser,
 } from 'react-icons/fa6'
 import ApplicationActions from '../../components/admin/ApplicationActions'
+import ReapplicationReview, { ReapplicationActions } from '../../components/admin/ReapplicationReview'
 import DashboardSection from '../../components/dashboard/DashboardSection'
 import DashboardWelcome from '../../components/dashboard/DashboardWelcome'
 import StatusBadge from '../../components/dashboard/StatusBadge'
@@ -20,7 +21,10 @@ import { getApplication, getDocumentUrl } from '../../services/applicationApi'
 
 const LIST_PATH = '/admin-dashboard/registration-forms'
 
-const DOCUMENT_LABELS = { payment_receipt: 'Payment Receipt / Deposit Slip' }
+const DOCUMENT_LABELS = {
+  payment_receipt: 'Payment Receipt / Deposit Slip',
+  medical_report: 'New Medical Report',
+}
 
 const formatDateTime = (value) =>
   new Date(value).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })
@@ -90,12 +94,20 @@ function RegistrationFormDetails() {
     )
   }
 
+  // A reapplication belongs to an existing student whose account is locked; it is
+  // reviewed against that account and approved or rejected with a reason
+  const isReapplication = application.type === 'REAPPLICATION'
+
   return (
     <>
       {backLink}
       <DashboardWelcome
-        title={`Application #${application.id}`}
-        message={application.fullName}
+        title={`${isReapplication ? 'Reapplication' : 'Application'} #${application.id}`}
+        message={
+          isReapplication
+            ? `${application.fullName} (${application.drivingSchoolId}): new registration application after three failed examination attempts`
+            : application.fullName
+        }
         icon={FaClipboardList}
       />
 
@@ -104,15 +116,34 @@ function RegistrationFormDetails() {
         icon={FaClipboardCheck}
         aside={
           <div className="flex flex-wrap items-center gap-2">
-            <ApplicationActions application={application} onChanged={handleChanged} />
+            {isReapplication ? (
+              <ReapplicationActions application={application} onChanged={handleChanged} />
+            ) : (
+              <ApplicationActions application={application} onChanged={handleChanged} />
+            )}
           </div>
         }
       >
         <DetailList
           rows={[
             { label: 'Status', value: <StatusBadge status={application.status} /> },
+            {
+              label: 'Type',
+              value: isReapplication
+                ? 'Reapplication (existing student, after three failed examination attempts)'
+                : 'First-time application',
+            },
             { label: 'Submitted', value: formatDateTime(application.createdAt) },
-            ...(application.status === 'APPROVED'
+            ...(isReapplication
+              ? [
+                  ...(application.status === 'REJECTED'
+                    ? [{ label: 'Rejection Reason', value: application.rejectionReason }]
+                    : []),
+                  ...(application.reviewedAt
+                    ? [{ label: 'Reviewed', value: formatDateTime(application.reviewedAt) }]
+                    : []),
+                ]
+              : application.status === 'APPROVED'
               ? [
                   { label: 'Driving School ID', value: application.drivingSchoolId },
                   { label: 'Approved', value: formatDateTime(application.approvedAt) },
@@ -129,6 +160,8 @@ function RegistrationFormDetails() {
           ]}
         />
       </DashboardSection>
+
+      {isReapplication && <ReapplicationReview application={application} />}
 
       <div className="grid gap-6 xl:grid-cols-2">
         <DashboardSection title="Applicant Details" icon={FaUser}>
@@ -158,7 +191,8 @@ function RegistrationFormDetails() {
               rows={[
                 { label: 'Payment Method', value: getPaymentMethodLabel(application.paymentMethod) },
                 {
-                  label: 'Minimum Registration Payment',
+                  // Older reapplications recorded the reattempt fee for the third failure here
+                  label: application.reapplication?.legacyPayment ? 'Reattempt Fee Due (older form)' : 'Minimum Registration Payment',
                   value: formatPrice(application.minimumPayment),
                 },
               ]}

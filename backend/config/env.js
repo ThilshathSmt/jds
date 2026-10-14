@@ -16,6 +16,8 @@ const env = {
     process.env.UPLOAD_DIR || 'uploads',
     'applications',
   ),
+  // Receipts (and new medical reports) uploaded with a reattempt payment
+  reattemptUploadsDir: path.resolve(backendRoot, process.env.UPLOAD_DIR || 'uploads', 'exam-reattempts'),
   isProduction: process.env.NODE_ENV === 'production',
   port: Number(process.env.PORT) || 5000,
   clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',

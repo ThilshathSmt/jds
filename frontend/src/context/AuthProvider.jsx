@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AuthContext } from './useAuth'
+import { onAccountLocked } from '../services/apiClient'
 import * as authApi from '../services/authApi'
 
 // Holds the signed-in user for the whole app. The session itself is an httpOnly cookie
@@ -18,6 +19,16 @@ function AuthProvider({ children }) {
     return () => {
       active = false
     }
+  }, [])
+
+  // The account was locked while the student was signed in (a third failed examination
+  // attempt was recorded): the backend now refuses every request, so leave the panel and
+  // show what to do next. The page is loaded afresh, which also drops everything it held.
+  useEffect(() => {
+    onAccountLocked(() => {
+      if (!window.location.pathname.startsWith('/reapply')) window.location.assign('/reapply')
+    })
+    return () => onAccountLocked(null)
   }, [])
 
   const auth = useMemo(

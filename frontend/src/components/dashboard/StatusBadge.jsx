@@ -12,6 +12,11 @@ const styles = {
   // Exam date request statuses
   PENDING: 'bg-amber-50 text-amber-700 ring-amber-600/20',
   REJECTED: 'bg-danger-soft text-danger-dark ring-danger/20',
+  // Physical examination results
+  PASSED: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
+  FAILED: 'bg-danger-soft text-danger-dark ring-danger/20',
+  // A medical report or payment that is not needed
+  NOT_REQUIRED: 'bg-gray-100 text-gray-600 ring-gray-500/30',
 }
 
 // `label` replaces the status as the text shown, e.g. 'Pending' for PENDING

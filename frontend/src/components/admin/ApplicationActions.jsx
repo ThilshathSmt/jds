@@ -62,7 +62,9 @@ function ApplicationActions({ application, onChanged, size = 'md' }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
-  const available = ACTIONS_BY_STATUS[application.status] ?? []
+  // A reapplication is approved or rejected (with a reason) on its details page
+  const available =
+    application.type === 'REAPPLICATION' ? [] : (ACTIONS_BY_STATUS[application.status] ?? [])
   if (available.length === 0) return null
 
   const sizeClass = size === 'sm' ? 'px-2 py-1.5 text-xs' : 'px-4 py-2 text-sm'

@@ -11,6 +11,15 @@ export const NOTIFICATION_TYPES = {
   examDateRequestSubmitted: 'EXAM_DATE_REQUEST_SUBMITTED',
   examDateRequestApproved: 'EXAM_DATE_REQUEST_APPROVED',
   examDateRequestRejected: 'EXAM_DATE_REQUEST_REJECTED',
+  examResultPassed: 'EXAM_RESULT_PASSED',
+  examResultFailed: 'EXAM_RESULT_FAILED',
+  examReattemptSubmitted: 'EXAM_REATTEMPT_SUBMITTED',
+  examReattemptApproved: 'EXAM_REATTEMPT_APPROVED',
+  examReattemptRejected: 'EXAM_REATTEMPT_REJECTED',
+  examAttemptsExhausted: 'EXAM_ATTEMPTS_EXHAUSTED',
+  reapplicationSubmitted: 'REAPPLICATION_SUBMITTED',
+  reapplicationApproved: 'REAPPLICATION_APPROVED',
+  reapplicationRejected: 'REAPPLICATION_REJECTED',
 }
 
 const toNotification = (row) => ({
@@ -19,12 +28,16 @@ const toNotification = (row) => ({
   title: row.title,
   message: row.message,
   examDateRequestId: row.exam_date_request_id,
+  examReattemptRequestId: row.exam_reattempt_request_id,
+  registrationApplicationId: row.registration_application_id,
   read: row.read_at !== null,
   readAt: row.read_at,
   createdAt: row.created_at,
 })
 
-// `notification` is { type, title, message, examDateRequestId? }
+// `notification` is { type, title, message, examDateRequestId?, examReattemptRequestId?,
+// registrationApplicationId? }.
+// `message` is the short text shown in the list; the details are read from the request.
 export const notify = (userId, notification, db) =>
   notificationModel.create({ userId, ...notification }, db)
 
@@ -38,6 +51,12 @@ export const notifyRole = async (role, notification, db) => {
 // Nobody has to act on the request any more
 export const markRequestNotificationsRead = (examDateRequestId, type, readAt, db) =>
   notificationModel.markReadByRequest(examDateRequestId, type, readAt, db)
+
+export const markReattemptNotificationsRead = (examReattemptRequestId, type, readAt, db) =>
+  notificationModel.markReadByReattemptRequest(examReattemptRequestId, type, readAt, db)
+
+export const markApplicationNotificationsRead = (registrationApplicationId, type, readAt, db) =>
+  notificationModel.markReadByApplication(registrationApplicationId, type, readAt, db)
 
 export const list = async (userId, { limit }) => ({
   notifications: (await notificationModel.findByUser(userId, { limit })).map(toNotification),

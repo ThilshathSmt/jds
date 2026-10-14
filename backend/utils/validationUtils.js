@@ -1,3 +1,4 @@
+import { EXAM_RESULTS } from '../config/licenceExam.js'
 import { PAYMENT_METHODS, findPackageById } from '../config/packages.js'
 import AppError from './AppError.js'
 import { addDays, getSchoolDate, isTuesday, isValidDate } from './dateUtils.js'
@@ -7,7 +8,8 @@ export const ROLES = ['admin', 'student', 'instructor']
 // a registration application; admin accounts are created by the seeder only.
 export const PROVISIONABLE_ROLES = ['instructor']
 
-export const APPLICATION_STATUSES = ['NEW', 'APPROVED', 'SUSPENDED']
+export const APPLICATION_STATUSES = ['NEW', 'APPROVED', 'SUSPENDED', 'REJECTED']
+export const APPLICATION_TYPES = ['NEW_STUDENT', 'REAPPLICATION']
 
 export const EXAM_DATE_REQUEST_STATUSES = ['PENDING', 'APPROVED', 'REJECTED']
 export const MAX_PREFERRED_DATES = 3
@@ -278,6 +280,69 @@ export const validateExamDateRejectionInput = (body = {}) => {
 
   throwIfInvalid(errors)
   return { reasonCode, otherReason: reasonCode === 'OTHER' ? otherReason : null }
+}
+
+// Admin recording the result of an examination: exactly PASSED or FAILED
+export const validateExamResultInput = (body = {}) => {
+  const result = asTrimmedString(body.result).toUpperCase()
+  if (!EXAM_RESULTS.includes(result)) {
+    const message = 'Please select Passed or Failed.'
+    throw new AppError(400, message, { result: message })
+  }
+  return { result }
+}
+
+// A reattempt payment. Only the payment method is read from the form: the fee, the failed
+// attempt it pays for, the statuses and the student come from the server. The files are
+// checked by the upload middleware and the service.
+export const validateReattemptRequestInput = (body = {}) => {
+  const paymentMethod = asTrimmedString(body.paymentMethod)
+  if (!PAYMENT_METHODS.includes(paymentMethod)) {
+    const message = 'Please select a payment method.'
+    throw new AppError(400, message, { paymentMethod: message })
+  }
+  return { paymentMethod }
+}
+
+// Admin rejecting a reattempt payment or a reapplication: the reason the student will see
+export const validateRejectionReasonInput = (body = {}) => {
+  const reason = asTrimmedString(body.reason)
+  const errors = {}
+  if (!reason) errors.reason = 'Please enter the reason for the rejection.'
+  else if (reason.length > OTHER_REASON_MAX_LENGTH) {
+    errors.reason = `The reason must be ${OTHER_REASON_MAX_LENGTH} characters or fewer.`
+  }
+  throwIfInvalid(errors)
+  return { reason }
+}
+
+// The Driving School ID and password of a locked student who is reapplying. Checked
+// against the account by the service; here only that both were sent.
+export const validateReapplicationCredentials = (body = {}) => {
+  const credentials = {
+    drivingSchoolId: asTrimmedString(body.drivingSchoolId),
+    password: asString(body.password),
+  }
+  const errors = {}
+  if (!credentials.drivingSchoolId) errors.drivingSchoolId = 'Driving School ID is required.'
+  if (!credentials.password) errors.password = 'Password is required.'
+  throwIfInvalid(errors)
+  return credentials
+}
+
+// The reapplication form: the same fields as the Apply Now form (details, package and
+// payment method). A user id, status, price, fee or account status sent by the client is
+// ignored. The files are checked by the upload middleware and the service.
+export const validateReapplicationInput = (body = {}) => validateApplicationInput(body)
+
+// Optional ?type= filter for the admin list of applications
+export const validateApplicationTypeFilter = (value) => {
+  if (value === undefined || value === '') return undefined
+  const type = asTrimmedString(value).toUpperCase()
+  if (!APPLICATION_TYPES.includes(type)) {
+    throw new AppError(400, `Type must be one of: ${APPLICATION_TYPES.join(', ')}.`)
+  }
+  return type
 }
 
 // Query string of the notification list: ?limit=

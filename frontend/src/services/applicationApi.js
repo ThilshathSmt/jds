@@ -19,10 +19,15 @@ export const submitApplication = async (formData) => {
 
 // Admin only from here on
 
-// `status` is 'NEW', 'APPROVED', 'SUSPENDED' or '' for all
-export const listApplications = async (status = '') => {
-  const query = status ? `?status=${encodeURIComponent(status)}` : ''
-  const { applications } = await apiRequest(`${ADMIN_PATH}${query}`)
+// `status` is 'NEW', 'APPROVED', 'SUSPENDED', 'REJECTED' or '' for all; `type` is
+// 'NEW_STUDENT' (first-time), 'REAPPLICATION' (after three failed examination attempts)
+// or '' for both
+export const listApplications = async (status = '', type = '') => {
+  const params = new URLSearchParams()
+  if (status) params.set('status', status)
+  if (type) params.set('type', type)
+  const query = params.toString()
+  const { applications } = await apiRequest(`${ADMIN_PATH}${query ? `?${query}` : ''}`)
   return applications
 }
 
@@ -33,6 +38,15 @@ export const getApplication = async (id) => {
 
 export const approveApplication = async (id) => {
   const { application } = await apiRequest(`${ADMIN_PATH}/${id}/approve`, { method: 'POST' })
+  return application
+}
+
+// Reapplications only: `reason` is shown to the student, whose account stays locked
+export const rejectApplication = async (id, reason) => {
+  const { application } = await apiRequest(`${ADMIN_PATH}/${id}/reject`, {
+    method: 'POST',
+    body: { reason },
+  })
   return application
 }
 

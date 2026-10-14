@@ -80,6 +80,19 @@ export const findPendingByUser = async (userId, db = pool) => {
   return (await withDates(rows, db))[0] ?? null
 }
 
+// The student's approved request whose examination has no recorded result yet, if any
+// (the oldest one first)
+export const findAwaitingResultByUser = async (userId, db = pool) => {
+  const [rows] = await db.execute(
+    `SELECT ${REQUEST_COLUMNS} FROM exam_date_requests
+      WHERE user_id = ? AND status = 'APPROVED'
+        AND NOT EXISTS (SELECT 1 FROM licence_exam_attempts a WHERE a.exam_date_request_id = exam_date_requests.id)
+      ORDER BY approved_date, id LIMIT 1`,
+    [userId],
+  )
+  return (await withDates(rows, db))[0] ?? null
+}
+
 export const findAll = async ({ status } = {}, db = pool) => {
   const [rows] = await db.execute(
     `SELECT ${REQUEST_COLUMNS} FROM exam_date_requests

@@ -3,17 +3,36 @@
 
 import pool from '../config/database.js'
 
-const NOTIFICATION_COLUMNS = 'id, user_id, type, title, message, exam_date_request_id, read_at, created_at'
+const NOTIFICATION_COLUMNS =
+  'id, user_id, type, title, message, exam_date_request_id, exam_reattempt_request_id, registration_application_id, read_at, created_at'
 
 // One notification for one recipient. Returns its id.
 export const create = async (
-  { userId, type, title, message, examDateRequestId = null },
+  {
+    userId,
+    type,
+    title,
+    message,
+    examDateRequestId = null,
+    examReattemptRequestId = null,
+    registrationApplicationId = null,
+  },
   db = pool,
 ) => {
   const [result] = await db.execute(
-    `INSERT INTO notifications (user_id, type, title, message, exam_date_request_id)
-     VALUES (?, ?, ?, ?, ?)`,
-    [userId, type, title, message, examDateRequestId],
+    `INSERT INTO notifications
+       (user_id, type, title, message, exam_date_request_id, exam_reattempt_request_id,
+        registration_application_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [
+      userId,
+      type,
+      title,
+      message,
+      examDateRequestId,
+      examReattemptRequestId,
+      registrationApplicationId,
+    ],
   )
   return result.insertId
 }
@@ -62,5 +81,23 @@ export const markReadByRequest = async (examDateRequestId, type, readAt, db = po
     `UPDATE notifications SET read_at = ?
       WHERE exam_date_request_id = ? AND type = ? AND read_at IS NULL`,
     [readAt, examDateRequestId, type],
+  )
+}
+
+// The same for the notifications about a reattempt request
+export const markReadByReattemptRequest = async (examReattemptRequestId, type, readAt, db = pool) => {
+  await db.execute(
+    `UPDATE notifications SET read_at = ?
+      WHERE exam_reattempt_request_id = ? AND type = ? AND read_at IS NULL`,
+    [readAt, examReattemptRequestId, type],
+  )
+}
+
+// The same for the notifications about a registration application
+export const markReadByApplication = async (registrationApplicationId, type, readAt, db = pool) => {
+  await db.execute(
+    `UPDATE notifications SET read_at = ?
+      WHERE registration_application_id = ? AND type = ? AND read_at IS NULL`,
+    [readAt, registrationApplicationId, type],
   )
 }

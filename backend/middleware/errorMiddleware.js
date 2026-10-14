@@ -5,7 +5,8 @@ export const notFound = (req, res, next) => {
 }
 
 // Central error handler: every error response is { success: false, message }
-// (plus `errors` with per-field messages for validation failures). Express recognises an
+// (plus `errors` with per-field messages for validation failures, and `code` when the
+// frontend has to tell the situation apart). Express recognises an
 // error handler by its four parameters, so `next` must stay in the signature.
 export const errorHandler = (error, req, res, next) => {
   if (error instanceof AppError) {
@@ -13,6 +14,7 @@ export const errorHandler = (error, req, res, next) => {
       success: false,
       message: error.message,
       ...(error.errors ? { errors: error.errors } : {}),
+      ...(error.code ? { code: error.code } : {}),
     })
   }
   // Upload rejected by multer (see uploadMiddleware.js)
@@ -21,7 +23,9 @@ export const errorHandler = (error, req, res, next) => {
       error.code === 'LIMIT_FILE_SIZE'
         ? 'Maximum file size is 2 MB.'
         : 'The upload could not be processed.'
-    return res.status(400).json({ success: false, message, errors: { receipt: message } })
+    return res
+      .status(400)
+      .json({ success: false, message, errors: { [error.field ?? 'receipt']: message } })
   }
   // Malformed or oversized JSON body
   if (error.type === 'entity.parse.failed') {
@@ -33,6 +37,15 @@ export const errorHandler = (error, req, res, next) => {
   // A unique key was violated by two requests racing each other
   if (error.code === 'ER_DUP_ENTRY') {
     return res.status(409).json({ success: false, message: 'This record already exists.' })
+  }
+
+  // Two requests locked the same rows in a different order and MySQL stopped this one.
+  // Nothing was saved, so it is safe to send again.
+  if (error.code === 'ER_LOCK_DEADLOCK') {
+    return res.status(409).json({
+      success: false,
+      message: 'This record was being changed by another request. Please try again.',
+    })
   }
 
   // Unexpected: log the details, never send them to the client

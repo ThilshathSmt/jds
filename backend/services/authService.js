@@ -76,8 +76,16 @@ export const register = async ({ drivingSchoolId, name, email, password }) => {
   return toPublicUser(await userModel.findById(userId))
 }
 
-// Returns the public user and the session version to put in the login token
-export const login = async ({ drivingSchoolId, password }) => {
+// A student who has failed all three attempts of an examination cycle is locked out until
+// an admin approves a new registration application (see reapplicationService.js)
+export const LOCKED_CODE = 'REAPPLICATION_REQUIRED'
+export const LOCKED_MESSAGE =
+  'Your account is locked because all three examination attempts have been used. Submit a new registration application with a new medical report, a package and the registration payment. Your account will be reactivated after admin approval.'
+export const lockedError = () => new AppError(403, LOCKED_MESSAGE, undefined, LOCKED_CODE)
+
+// Checks a Driving School ID and password and returns the account's row. Used by login and
+// wherever someone who cannot log in has to prove who they are.
+export const verifyCredentials = async ({ drivingSchoolId, password }) => {
   const user = await userModel.findByDrivingSchoolId(drivingSchoolId)
   const passwordMatches = await verifyPassword(
     password,
@@ -90,14 +98,25 @@ export const login = async ({ drivingSchoolId, password }) => {
   if (user.status !== 'active') {
     throw new AppError(403, 'This account is inactive. Please contact the school.')
   }
+  return user
+}
+
+// Returns the public user and the session version to put in the login token.
+// A locked account is refused, with the reason: only a correct password gets that far.
+export const login = async (credentials) => {
+  const user = await verifyCredentials(credentials)
+  if (user.locked_at !== null) throw lockedError()
   return { user: toPublicUser(user), sessionVersion: user.session_version }
 }
 
-// Used by the auth middleware on every protected request. Returns null when the
-// account no longer exists, has been deactivated, or was deactivated after the token
-// was issued (its session version has moved on).
-export const getActiveUserById = async (userId, sessionVersion) => {
+// Used by the auth middleware on every protected request. Returns null when the account
+// no longer exists, has been deactivated, or the token is from before its sessions were
+// ended (its session version has moved on). Otherwise `{ user, locked }`.
+// Locking an account ends its sessions too, but a token of a locked account is still told
+// that it is locked (and given nothing else), so the student learns why they are out.
+export const getSessionUser = async (userId, sessionVersion) => {
   const user = await userModel.findById(userId)
-  const valid = user && user.status === 'active' && user.session_version === sessionVersion
-  return valid ? toPublicUser(user) : null
+  if (!user || user.status !== 'active') return null
+  if (user.locked_at !== null) return { user: null, locked: true }
+  return user.session_version === sessionVersion ? { user: toPublicUser(user), locked: false } : null
 }

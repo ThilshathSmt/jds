@@ -17,6 +17,7 @@ import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import DashboardSection from '../../components/dashboard/DashboardSection'
 import DashboardWelcome from '../../components/dashboard/DashboardWelcome'
 import ExamDateRequestSummary from '../../components/examDate/ExamDateRequestSummary'
+import { NextActionLink } from '../../components/licenceExam/AttemptSummaryCard'
 import TuesdayCalendar from '../../components/examDate/TuesdayCalendar'
 import { useNotifications } from '../../context/useNotifications'
 import { listMyExamDateRequests, submitExamDateRequest } from '../../services/examDateRequestApi'
@@ -258,7 +259,7 @@ function ExamDateRequest() {
 
   const handleSubmitted = (request) => {
     setJustSubmitted(true)
-    setData((current) => ({ canSubmit: false, requests: [request, ...current.requests] }))
+    setData((current) => ({ ...current, canSubmit: false, requests: [request, ...current.requests] }))
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -302,7 +303,10 @@ function ExamDateRequest() {
   }
 
   const pending = data.requests.find((request) => request.status === 'PENDING')
-  const earlier = data.requests.filter((request) => request !== pending)
+  // An approved date whose examination has no recorded result yet
+  const awaitingResult = data.requests.find((request) => request.result?.status === 'PENDING')
+  const earlier = data.requests.filter((request) => request !== pending && request !== awaitingResult)
+  const { summary } = data
 
   return (
     <>
@@ -329,14 +333,59 @@ function ExamDateRequest() {
           )}
           <ExamDateRequestSummary request={pending} />
         </DashboardSection>
+      ) : data.canSubmit ? (
+        <>
+          <p className="flex items-start gap-3 rounded-2xl border border-gray-200 bg-white px-5 py-4 text-ink shadow-sm">
+            <FaCircleInfo aria-hidden="true" className="mt-1 shrink-0 text-brand" />
+            <span>
+              <strong>
+                Attempt {summary.nextAttemptNumber} of {summary.attemptsPerCycle}
+              </strong>{' '}
+              (attempt cycle {summary.cycleNumber}). {summary.message}
+            </span>
+          </p>
+          <RequestForm
+            onSubmitted={(request) => {
+              handleSubmitted(request)
+              refreshNotifications()
+            }}
+            onConflict={load}
+          />
+        </>
       ) : (
-        <RequestForm
-          onSubmitted={(request) => {
-            handleSubmitted(request)
-            refreshNotifications()
-          }}
-          onConflict={load}
-        />
+        // Passed, a booked examination awaiting its result, or a reattempt payment still owed
+        <DashboardSection
+          title={awaitingResult ? 'Your Approved Examination Date' : 'Exam Date Requests'}
+          icon={awaitingResult ? FaCalendarCheck : FaCircleInfo}
+        >
+          <p
+            data-blocked={summary.status}
+            className={`flex items-start gap-3 rounded-lg px-4 py-3 font-medium ${
+              summary.passed
+                ? 'border border-emerald-200 bg-emerald-50 text-emerald-800'
+                : awaitingResult
+                  ? 'bg-amber-50 text-amber-800'
+                  : 'bg-danger-soft text-danger-dark'
+            }`}
+          >
+            {summary.passed ? (
+              <FaCircleCheck aria-hidden="true" className="mt-1 shrink-0" />
+            ) : (
+              <FaCircleInfo aria-hidden="true" className="mt-1 shrink-0" />
+            )}
+            {summary.message}
+          </p>
+          {awaitingResult && (
+            <div className="mt-4">
+              <ExamDateRequestSummary request={awaitingResult} />
+            </div>
+          )}
+          {!awaitingResult && (
+            <div className="mt-5 flex justify-end">
+              <NextActionLink summary={summary} />
+            </div>
+          )}
+        </DashboardSection>
       )}
 
       {earlier.length > 0 && (
