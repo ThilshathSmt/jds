@@ -12,6 +12,11 @@ CREATE TABLE IF NOT EXISTS users (
   -- Increased whenever the account is deactivated; login tokens carrying an older value
   -- are rejected, so a deactivated user's sessions stay dead even after reactivation.
   session_version INT UNSIGNED NOT NULL DEFAULT 0,
+  -- Set when a student has failed all three attempts of an examination cycle: the account
+  -- cannot be used until an admin approves a new registration application (a
+  -- "reapplication"), which clears it again. Separate from `status`: activating or
+  -- deactivating an account never unlocks it.
+  locked_at TIMESTAMP NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uq_users_driving_school_id (driving_school_id),
@@ -54,6 +59,19 @@ CREATE TABLE IF NOT EXISTS driving_school_id_sequences (
 -- on the Register page. The account is reached through driving_school_ids.user_id:
 --   registration_applications.driving_school_id -> driving_school_ids -> users
 -- Amounts are whole Sri Lankan rupees.
+--
+-- A REAPPLICATION is the new application a student must submit after failing all three
+-- attempts of an examination cycle (their account is locked until it is approved). It
+-- belongs to the existing account (`user_id`): no Driving School ID is issued for it and
+-- `driving_school_id` stays NULL, so the student keeps the ID and the account they have.
+--   NEW -> APPROVED (the account is unlocked and a new cycle of attempts starts)
+--   NEW -> REJECTED (with `rejection_reason`; the account stays locked)
+-- `pending` is 1 while a reapplication is NEW and NULL otherwise: one pending
+-- reapplication per student. Like a first-time application it has a package chosen by the
+-- student, its minimum registration payment and the payment receipt; it also carries the
+-- new medical report as a document. It never includes the examination reattempt fee.
+-- (Reapplications from before packages were chosen copied the first application's package
+-- and recorded the reattempt fee as `minimum_payment`.)
 CREATE TABLE IF NOT EXISTS registration_applications (
   id INT PRIMARY KEY AUTO_INCREMENT,
   full_name VARCHAR(100) NOT NULL,
@@ -66,15 +84,25 @@ CREATE TABLE IF NOT EXISTS registration_applications (
   package_price INT UNSIGNED NOT NULL,
   minimum_payment INT UNSIGNED NOT NULL,
   payment_method ENUM('bank-transfer', 'visit-branch') NOT NULL,
-  status ENUM('NEW', 'APPROVED', 'SUSPENDED') NOT NULL DEFAULT 'NEW',
+  status ENUM('NEW', 'APPROVED', 'SUSPENDED', 'REJECTED') NOT NULL DEFAULT 'NEW',
   driving_school_id VARCHAR(50) NULL,
+  application_type ENUM('NEW_STUDENT', 'REAPPLICATION') NOT NULL DEFAULT 'NEW_STUDENT',
+  user_id INT NULL,
+  pending TINYINT NULL,
+  rejection_reason VARCHAR(300) NULL,
+  reviewed_by INT NULL,
+  reviewed_at TIMESTAMP NULL,
   approved_at TIMESTAMP NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uq_registration_applications_driving_school_id (driving_school_id),
+  UNIQUE KEY uq_registration_applications_one_pending (user_id, pending),
   KEY idx_registration_applications_status (status, created_at),
   CONSTRAINT fk_registration_applications_driving_school_id FOREIGN KEY (driving_school_id)
-    REFERENCES driving_school_ids (driving_school_id)
+    REFERENCES driving_school_ids (driving_school_id),
+  CONSTRAINT fk_registration_applications_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+  CONSTRAINT fk_registration_applications_reviewed_by FOREIGN KEY (reviewed_by)
+    REFERENCES users (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Files uploaded with an application. Only metadata is stored here; the file itself is on
@@ -82,7 +110,7 @@ CREATE TABLE IF NOT EXISTS registration_applications (
 CREATE TABLE IF NOT EXISTS application_documents (
   id INT PRIMARY KEY AUTO_INCREMENT,
   application_id INT NOT NULL,
-  document_type ENUM('payment_receipt') NOT NULL,
+  document_type ENUM('payment_receipt', 'medical_report') NOT NULL,
   original_name VARCHAR(255) NOT NULL,
   stored_name VARCHAR(100) NOT NULL,
   mime_type VARCHAR(100) NOT NULL,
@@ -187,11 +215,148 @@ CREATE TABLE IF NOT EXISTS exam_date_request_dates (
     REFERENCES exam_date_requests (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Attempts at the physical driving licence examination are counted in cycles of three.
+-- A student's first cycle belongs to the application they registered with and uses the
+-- medical report they confirmed when requesting a date. Every later cycle is created only
+-- when an admin approves a reapplication (`application_id`); `medical_report_document_id`
+-- is the new medical report submitted with it. (`source_request_id` is set on cycles
+-- created before reapplications existed, when a reattempt request could start a cycle.)
+--   ACTIVE    -> attempts may still be recorded
+--   EXHAUSTED -> all three attempts failed: the account is locked until a reapplication
+--   PASSED    -> the student passed in this cycle
+-- The number of attempts used is the number of licence_exam_attempts rows of the cycle.
+-- Cycles are never changed or deleted: the history of earlier cycles stays for review.
+-- The UNIQUE keys mean a student cannot get two cycles with the same number, one approved
+-- request can never create two cycles, and one application starts one cycle at most.
+CREATE TABLE IF NOT EXISTS exam_attempt_cycles (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  user_id INT NOT NULL,
+  cycle_number SMALLINT UNSIGNED NOT NULL,
+  source_request_id INT NULL,
+  application_id INT NULL,
+  medical_report_document_id INT NULL,
+  status ENUM('ACTIVE', 'EXHAUSTED', 'PASSED') NOT NULL DEFAULT 'ACTIVE',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_exam_attempt_cycles_number (user_id, cycle_number),
+  UNIQUE KEY uq_exam_attempt_cycles_source (source_request_id),
+  UNIQUE KEY uq_exam_attempt_cycles_application (application_id),
+  CONSTRAINT fk_exam_attempt_cycles_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+  CONSTRAINT fk_exam_attempt_cycles_application FOREIGN KEY (application_id)
+    REFERENCES registration_applications (id) ON DELETE SET NULL,
+  CONSTRAINT fk_exam_attempt_cycles_medical_report FOREIGN KEY (medical_report_document_id)
+    REFERENCES application_documents (id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- One row for every time a student sat the physical examination: written when an admin
+-- records the result of an approved exam date request, never before. Requesting a date or
+-- having a request rejected writes nothing here, so it uses no attempt.
+--   UNIQUE (exam_date_request_id): a booking is counted as one attempt at most
+--   UNIQUE (cycle_id, attempt_number): attempt 1, 2 and 3 of a cycle each exist once
+-- `exam_date` is copied from the request's approved date. A recorded result is final.
+-- A FAILED first or second attempt of a cycle must be followed by an approved
+-- exam_reattempt_requests row (the reattempt fee) before the student may request another
+-- date. A FAILED third attempt costs no fee: it exhausts the cycle and locks the account.
+CREATE TABLE IF NOT EXISTS licence_exam_attempts (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  user_id INT NOT NULL,
+  cycle_id INT NOT NULL,
+  attempt_number TINYINT UNSIGNED NOT NULL,
+  exam_date_request_id INT NOT NULL,
+  exam_date DATE NOT NULL,
+  result ENUM('PASSED', 'FAILED') NOT NULL,
+  recorded_by INT NULL,
+  recorded_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_licence_exam_attempts_request (exam_date_request_id),
+  UNIQUE KEY uq_licence_exam_attempts_number (cycle_id, attempt_number),
+  KEY idx_licence_exam_attempts_user (user_id, recorded_at),
+  CONSTRAINT fk_licence_exam_attempts_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+  CONSTRAINT fk_licence_exam_attempts_cycle FOREIGN KEY (cycle_id)
+    REFERENCES exam_attempt_cycles (id) ON DELETE CASCADE,
+  CONSTRAINT fk_licence_exam_attempts_request FOREIGN KEY (exam_date_request_id)
+    REFERENCES exam_date_requests (id) ON DELETE CASCADE,
+  CONSTRAINT fk_licence_exam_attempts_recorded_by FOREIGN KEY (recorded_by)
+    REFERENCES users (id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- The reattempt fee a student owes after a first or second failed examination of a cycle,
+-- with its proof of payment. An admin checks it:
+--   PENDING -> APPROVED: the student may request an examination date again
+--   PENDING -> REJECTED (with a reason): nothing is unlocked; the student may submit again.
+-- The student submits it from their account, with the receipt as a document of this
+-- table. A third failure costs no fee (the account is locked and a new registration
+-- application is required). Rows from before that rule were paid for a third failure with
+-- a reapplication (`reapplication_id`): they are approved or rejected together with it.
+-- (`medical_report_required` and `medical_report_status` belong to rows from before
+-- reapplications existed, when a third failure was settled here with a medical report.)
+-- Every failed attempt has its own payment: `failed_attempt_id` is the attempt this row
+-- pays for, and `cycle_id` is that attempt's cycle.
+--   `approved` is 1 once APPROVED and NULL otherwise, so UNIQUE (failed_attempt_id, approved)
+--   allows any number of rejected submissions for a failure but only one approved payment.
+--   `pending` is 1 while PENDING and NULL afterwards: one pending submission per student.
+-- `payment_status` and `medical_report_status` say which of the two the admin accepted
+-- (`medical_report_status` means nothing when no medical report was required).
+-- `fee_amount` is set by the server (whole Sri Lankan rupees), never by the browser.
+CREATE TABLE IF NOT EXISTS exam_reattempt_requests (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  user_id INT NOT NULL,
+  student_name VARCHAR(100) NOT NULL,
+  driving_school_id VARCHAR(50) NOT NULL,
+  cycle_id INT NOT NULL,
+  failed_attempt_id INT NOT NULL,
+  medical_report_required TINYINT(1) NOT NULL DEFAULT 1,
+  reapplication_id INT NULL,
+  fee_amount INT UNSIGNED NOT NULL,
+  payment_method ENUM('bank-transfer', 'visit-branch') NOT NULL,
+  status ENUM('PENDING', 'APPROVED', 'REJECTED') NOT NULL DEFAULT 'PENDING',
+  medical_report_status ENUM('PENDING', 'APPROVED', 'REJECTED') NOT NULL DEFAULT 'PENDING',
+  payment_status ENUM('PENDING', 'APPROVED', 'REJECTED') NOT NULL DEFAULT 'PENDING',
+  pending TINYINT NULL DEFAULT 1,
+  approved TINYINT NULL,
+  rejection_reason VARCHAR(300) NULL,
+  reviewed_by INT NULL,
+  reviewed_at TIMESTAMP NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_exam_reattempt_requests_one_pending (user_id, pending),
+  UNIQUE KEY uq_exam_reattempt_requests_one_approved (failed_attempt_id, approved),
+  KEY idx_exam_reattempt_requests_status (status, created_at),
+  KEY idx_exam_reattempt_requests_user (user_id, created_at),
+  CONSTRAINT fk_exam_reattempt_requests_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+  CONSTRAINT fk_exam_reattempt_requests_cycle FOREIGN KEY (cycle_id)
+    REFERENCES exam_attempt_cycles (id) ON DELETE CASCADE,
+  CONSTRAINT fk_exam_reattempt_requests_attempt FOREIGN KEY (failed_attempt_id)
+    REFERENCES licence_exam_attempts (id) ON DELETE CASCADE,
+  CONSTRAINT fk_exam_reattempt_requests_reviewed_by FOREIGN KEY (reviewed_by)
+    REFERENCES users (id) ON DELETE SET NULL,
+  CONSTRAINT fk_exam_reattempt_requests_reapplication FOREIGN KEY (reapplication_id)
+    REFERENCES registration_applications (id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- The files of a reattempt request: the payment receipt and, when required, the new
+-- medical report. Only metadata is stored here; the file itself is on disk under the
+-- uploads directory as `stored_name` (a random name chosen by the server).
+CREATE TABLE IF NOT EXISTS exam_reattempt_request_documents (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  request_id INT NOT NULL,
+  document_type ENUM('medical_report', 'payment_receipt') NOT NULL,
+  original_name VARCHAR(255) NOT NULL,
+  stored_name VARCHAR(100) NOT NULL,
+  mime_type VARCHAR(100) NOT NULL,
+  size_bytes INT UNSIGNED NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_exam_reattempt_request_documents_stored_name (stored_name),
+  UNIQUE KEY uq_exam_reattempt_request_documents_type (request_id, document_type),
+  CONSTRAINT fk_exam_reattempt_request_documents_request FOREIGN KEY (request_id)
+    REFERENCES exam_reattempt_requests (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- Notifications shown under the bell and on the Notifications pages. One row per
 -- recipient (`user_id`), so every user has their own read state: a message for the admins
 -- is stored once for each admin account. `read_at` is NULL until the recipient reads it.
--- `type` says what the notification is about; `exam_date_request_id` links it to the
--- request it concerns (NULL for future notification types that have no request).
+-- `type` says what the notification is about. `exam_date_request_id` or
+-- `exam_reattempt_request_id` / `registration_application_id` links it to what it concerns (both NULL for notification
+-- types that have no request).
 CREATE TABLE IF NOT EXISTS notifications (
   id INT PRIMARY KEY AUTO_INCREMENT,
   user_id INT NOT NULL,
@@ -199,6 +364,8 @@ CREATE TABLE IF NOT EXISTS notifications (
   title VARCHAR(150) NOT NULL,
   message VARCHAR(600) NOT NULL,
   exam_date_request_id INT NULL,
+  exam_reattempt_request_id INT NULL,
+  registration_application_id INT NULL,
   read_at TIMESTAMP NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   KEY idx_notifications_user (user_id, created_at),
@@ -206,5 +373,9 @@ CREATE TABLE IF NOT EXISTS notifications (
   KEY idx_notifications_request (exam_date_request_id),
   CONSTRAINT fk_notifications_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
   CONSTRAINT fk_notifications_exam_date_request FOREIGN KEY (exam_date_request_id)
-    REFERENCES exam_date_requests (id) ON DELETE CASCADE
+    REFERENCES exam_date_requests (id) ON DELETE CASCADE,
+  CONSTRAINT fk_notifications_exam_reattempt_request FOREIGN KEY (exam_reattempt_request_id)
+    REFERENCES exam_reattempt_requests (id) ON DELETE CASCADE,
+  CONSTRAINT fk_notifications_registration_application FOREIGN KEY (registration_application_id)
+    REFERENCES registration_applications (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

@@ -22,6 +22,9 @@ const toManagedUser = (row) => ({
   email: row.email,
   role: row.role,
   status: row.status,
+  // Locked after three failed examination attempts, until a reapplication is approved.
+  // Activating or deactivating the account does not change it.
+  locked: row.locked_at !== null,
   createdAt: row.created_at,
 })
 

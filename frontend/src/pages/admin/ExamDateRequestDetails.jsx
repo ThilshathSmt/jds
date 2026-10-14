@@ -1,10 +1,19 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { FaArrowLeft, FaBan, FaCalendarCheck, FaCircleCheck, FaClipboardCheck } from 'react-icons/fa6'
+import {
+  FaArrowLeft,
+  FaBan,
+  FaCalendarCheck,
+  FaCircleCheck,
+  FaCircleInfo,
+  FaClipboardCheck,
+  FaSquarePollVertical,
+} from 'react-icons/fa6'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import Modal from '../../components/admin/Modal'
 import DashboardSection from '../../components/dashboard/DashboardSection'
 import DashboardWelcome from '../../components/dashboard/DashboardWelcome'
+import StatusBadge from '../../components/dashboard/StatusBadge'
 import Toast from '../../components/dashboard/Toast'
 import ExamDateRequestSummary from '../../components/examDate/ExamDateRequestSummary'
 import { useNotifications } from '../../context/useNotifications'
@@ -13,7 +22,10 @@ import {
   getExamDateRequest,
   rejectExamDateRequest,
 } from '../../services/examDateRequestApi'
+import { recordExamResult } from '../../services/licenceExamApi'
 import { formatExamDate, getSchoolDate, rejectionReasons } from '../../utils/examDateUtils'
+import { formatDateTime } from '../../utils/formatUtils'
+import { formatAttempt, resultLabels } from '../../utils/licenceExamUtils'
 
 const LIST_PATH = '/admin-dashboard/notifications'
 const OTHER_REASON_MAX_LENGTH = 300
@@ -147,8 +159,166 @@ function RejectDialog({ request, onRejected, onClose }) {
   )
 }
 
+const resultOptions = [
+  { value: 'PASSED', label: 'Passed' },
+  { value: 'FAILED', label: 'Failed' },
+]
+
+// The examination of an approved request: which attempt it is and, after the examination,
+// its result. Recording Passed or Failed is what uses one of the student's attempts, and
+// it can be done once. `onRecorded(request)` receives the updated request; `onStale()` is
+// called when the backend says the page is out of date.
+function ExaminationResult({ request, onRecorded, onStale }) {
+  const { result, attemptSummary } = request
+  const recorded = result.status !== 'PENDING'
+  const [choice, setChoice] = useState('')
+  const [confirming, setConfirming] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  // Why no result can be recorded for this booking, if so (the backend refuses it too)
+  const blocked = recorded
+    ? ''
+    : attemptSummary.passed
+      ? 'This student has already passed the examination, so no further result can be recorded.'
+      : attemptSummary.nextAttemptNumber === null
+        ? `This student has used all ${attemptSummary.attemptsPerCycle} attempts of attempt cycle ${attemptSummary.cycleNumber}. A new attempt cycle must be approved before another result can be recorded.`
+        : ''
+  const attempt = recorded
+    ? formatAttempt(result.attemptNumber, result.attemptsPerCycle)
+    : blocked
+      ? 'Not counted'
+      : formatAttempt(attemptSummary.nextAttemptNumber, attemptSummary.attemptsPerCycle)
+
+  const rows = [
+    { label: 'Student Name', value: request.studentName },
+    { label: 'Driving School ID', value: request.drivingSchoolId },
+    { label: 'Confirmed Examination Date', value: formatExamDate(request.approvedDate) },
+    { label: 'Attempt', value: attempt },
+    { label: 'Attempt Cycle', value: recorded ? result.cycleNumber : attemptSummary.cycleNumber },
+    {
+      label: 'Result Status',
+      value: <StatusBadge status={result.status} label={resultLabels[result.status]} />,
+    },
+    ...(recorded ? [{ label: 'Result Recorded', value: formatDateTime(result.recordedAt) }] : []),
+  ]
+
+  // True from the click until the backend answers. A ref, not state: a second click in
+  // the same instant, before the button has been redrawn as disabled, is stopped too.
+  const recording = useRef(false)
+
+  const record = async () => {
+    if (recording.current) return
+    recording.current = true
+    setBusy(true)
+    setError('')
+    try {
+      const updated = await recordExamResult(request.id, choice)
+      // Only once the backend has confirmed it: on a failure the dialog stays open with
+      // the error, so the admin can try again
+      setConfirming(false)
+      onRecorded(updated)
+    } catch (recordError) {
+      setError(recordError.message)
+      // 409: recorded already, or the student's attempts changed in the meantime
+      if (recordError.status === 409) onStale()
+    } finally {
+      recording.current = false
+      setBusy(false)
+    }
+  }
+
+  // A failed last attempt of the cycle locks the student's account
+  const locksAccount =
+    choice === 'FAILED' && !recorded && attemptSummary.nextAttemptNumber === attemptSummary.attemptsPerCycle
+  const notYetHeld = request.approvedDate > getSchoolDate()
+  const choiceLabel = resultOptions.find((option) => option.value === choice)?.label
+
+  return (
+    <DashboardSection title="Examination Result" icon={FaSquarePollVertical}>
+      <dl className="divide-y divide-gray-100" data-exam-result={result.status}>
+        {rows.map(({ label, value }) => (
+          <div key={label} className="grid gap-1 py-3 sm:grid-cols-[14rem_1fr] sm:gap-4">
+            <dt className="text-sm font-medium text-gray-500">{label}</dt>
+            <dd className="font-medium break-words text-ink">{value}</dd>
+          </div>
+        ))}
+      </dl>
+
+      {blocked && (
+        <p className="mt-4 flex items-start gap-3 rounded-lg bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+          <FaCircleInfo aria-hidden="true" className="mt-0.5 shrink-0" />
+          {blocked}
+        </p>
+      )}
+
+      {!recorded && !blocked && (
+        <div className="mt-5 border-t border-gray-100 pt-5">
+          <fieldset disabled={busy}>
+            <legend className="font-semibold text-ink">
+              After the examination, record the result:
+            </legend>
+            <div className="mt-4 flex flex-wrap gap-3">
+              {resultOptions.map(({ value, label }) => (
+                <label key={value} className={`min-w-32 ${optionClass(choice === value, false)}`}>
+                  <input
+                    type="radio"
+                    name="examResult"
+                    value={value}
+                    checked={choice === value}
+                    onChange={() => setChoice(value)}
+                    className="h-4 w-4 accent-brand"
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+          <p className="mt-4 text-sm text-gray-600">
+            Recording a result uses one of the student&apos;s attempts and cannot be changed
+            afterwards. A failed first or second attempt requires the student to pay the
+            reattempt fee before requesting another date; a failed third attempt costs no fee
+            but locks the account until a new registration application is approved. If the
+            student did not sit the examination,
+            do not record a result.
+          </p>
+          <div className="mt-5 flex justify-end">
+            <button
+              type="button"
+              onClick={() => setConfirming(true)}
+              disabled={!choice}
+              title={choice ? undefined : 'Select Passed or Failed first'}
+              className="btn btn-primary !rounded-lg !px-5 !py-2.5 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <FaSquarePollVertical aria-hidden="true" />
+              Record Result
+            </button>
+          </div>
+        </div>
+      )}
+
+      {confirming && (
+        <ConfirmDialog
+          title={`Record result: ${choiceLabel}?`}
+          message={`${request.studentName}'s examination on ${formatExamDate(request.approvedDate)} will be recorded as ${choiceLabel} (${attempt}). The student will be notified. This uses one attempt and cannot be changed.${locksAccount ? " This is the student's last attempt: recording Failed locks the account until a new registration application is approved." : ''}${notYetHeld ? ' Note: this examination date has not arrived yet.' : ''}`}
+          confirmLabel={`Record ${choiceLabel}`}
+          tone={choice === 'FAILED' ? 'danger' : 'primary'}
+          busy={busy}
+          error={error}
+          onConfirm={record}
+          onCancel={() => {
+            setConfirming(false)
+            setError('')
+          }}
+        />
+      )}
+    </DashboardSection>
+  )
+}
+
 // Admin-only page for one exam date request: its details and, while it is pending, the
-// decision. Approving confirms exactly one of the student's preferred dates.
+// decision. Approving confirms exactly one of the student's preferred dates. After the
+// examination of an approved request, its result is recorded here.
 function ExamDateRequestDetails() {
   const { requestId } = useParams()
   const { notifications, markRead, refresh: refreshNotifications } = useNotifications()
@@ -245,6 +415,19 @@ function ExamDateRequestDetails() {
       <DashboardSection title="Request Details" icon={FaClipboardCheck}>
         <ExamDateRequestSummary request={request} showStudent />
       </DashboardSection>
+
+      {request.status === 'APPROVED' && (
+        <ExaminationResult
+          request={request}
+          onRecorded={(updated) =>
+            handleDecided(
+              updated,
+              `Result recorded: ${resultLabels[updated.result.status]}. The student has been notified.`,
+            )
+          }
+          onStale={() => getExamDateRequest(requestId).then(setRequest).catch(() => {})}
+        />
+      )}
 
       {request.status === 'PENDING' && (
         <DashboardSection title="Decision" icon={FaCircleCheck}>

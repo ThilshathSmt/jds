@@ -1,9 +1,10 @@
 import { registrationSteps } from '../../data/registrationData'
 
-function RegistrationProgress({ currentStep }) {
+// `steps` defaults to the Apply Now form's steps
+function RegistrationProgress({ currentStep, steps = registrationSteps }) {
   return (
     <ol className="my-8 flex" aria-label="Registration progress">
-      {registrationSteps.map(({ id, label }, index) => {
+      {steps.map(({ id, label }, index) => {
         const reached = id <= currentStep
         return (
           <li

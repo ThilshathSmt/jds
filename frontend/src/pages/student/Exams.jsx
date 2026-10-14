@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { FaArrowRight, FaCalendarCheck, FaFileSignature } from 'react-icons/fa6'
+import { FaArrowRight, FaFileSignature } from 'react-icons/fa6'
 import DashboardWelcome from '../../components/dashboard/DashboardWelcome'
+import AttemptSummaryCard from '../../components/licenceExam/AttemptSummaryCard'
+import { useNotifications } from '../../context/useNotifications'
 import { getExamIcon } from '../../data/examIcons'
 import { listExams } from '../../services/examApi'
+import { getMyLicenceExam } from '../../services/licenceExamApi'
 
 const noticeClass =
   'rounded-2xl border border-gray-200 bg-white p-8 text-center text-gray-600 shadow-sm sm:p-12'
@@ -39,29 +42,34 @@ function ExamCard({ exam }) {
 }
 
 // The physical driving licence examination: not a practice exam, so it is not in the
-// list loaded from the backend
-function ExamDateRequestCard() {
+// list of exams. Shows the student's attempts, what is owed and the next step (request a
+// date, pay the reattempt fee, ...), all read from the backend.
+function LicenceExamSection() {
+  const { notifications } = useNotifications()
+  const [summary, setSummary] = useState(null)
+  const [error, setError] = useState('')
+  // A new notification may mean a result or a decision: load the attempts again
+  const newestNotificationId = notifications[0]?.id ?? 0
+
+  useEffect(() => {
+    let active = true
+    getMyLicenceExam()
+      .then((loaded) => {
+        if (!active) return
+        setSummary(loaded.summary)
+        setError('')
+      })
+      .catch((loadError) => active && setError(loadError.message))
+    return () => {
+      active = false
+    }
+  }, [newestNotificationId])
+
+  if (summary) return <AttemptSummaryCard summary={summary} />
   return (
-    <section className="flex flex-col gap-5 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:flex-row sm:items-center sm:p-8">
-      <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-brand-soft text-3xl text-brand">
-        <FaCalendarCheck aria-hidden="true" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <h2 className="text-xl font-extrabold text-ink sm:text-2xl">
-          Request Driving Licence Exam Date
-        </h2>
-        <p className="mt-2 text-gray-600">
-          Tell us which Tuesdays you are available for your physical driving licence examination.
-        </p>
-      </div>
-      <Link
-        to="/student-dashboard/exams/date-request"
-        className="btn btn-primary shrink-0 !rounded-lg !px-5 !py-2.5"
-      >
-        Request Exam Date
-        <FaArrowRight aria-hidden="true" />
-      </Link>
-    </section>
+    <p role={error ? 'alert' : 'status'} className={noticeClass}>
+      {error ? `Your examination attempts could not be loaded. ${error}` : 'Loading your examination attempts...'}
+    </p>
   )
 }
 
@@ -127,7 +135,7 @@ function Exams() {
         </ul>
       )}
 
-      <ExamDateRequestCard />
+      <LicenceExamSection />
     </>
   )
 }

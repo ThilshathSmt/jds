@@ -9,6 +9,8 @@ import {
   parseId,
   validateApplicationInput,
   validateApplicationStatusFilter,
+  validateApplicationTypeFilter,
+  validateRejectionReasonInput,
 } from '../utils/validationUtils.js'
 
 // Public: POST /api/registration-applications (multipart/form-data)
@@ -34,7 +36,8 @@ export const submit = async (req, res) => {
 
 export const list = async (req, res) => {
   const status = validateApplicationStatusFilter(req.query.status)
-  const applications = await applicationService.list({ status })
+  const type = validateApplicationTypeFilter(req.query.type)
+  const applications = await applicationService.list({ status, type })
   sendSuccess(res, { message: 'Registration applications', data: { applications } })
 }
 
@@ -46,9 +49,22 @@ export const getDetails = async (req, res) => {
 export const approve = async (req, res) => {
   const application = await applicationService.approve(parseId(req.params.id), req.user.id)
   sendSuccess(res, {
-    message: `Application approved. Driving School ID ${application.drivingSchoolId} issued.`,
+    message:
+      application.type === 'REAPPLICATION'
+        ? `Reapplication approved. The account ${application.drivingSchoolId} is active again.`
+        : `Application approved. Driving School ID ${application.drivingSchoolId} issued.`,
     data: { application },
   })
+}
+
+// Reapplications only: the reason is shown to the student
+export const reject = async (req, res) => {
+  const application = await applicationService.reject(
+    parseId(req.params.id),
+    req.user.id,
+    validateRejectionReasonInput(req.body),
+  )
+  sendSuccess(res, { message: 'Reapplication rejected. The account stays locked.', data: { application } })
 }
 
 export const suspend = async (req, res) => {

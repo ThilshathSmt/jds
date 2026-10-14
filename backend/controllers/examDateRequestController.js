@@ -10,6 +10,7 @@ import {
   validateExamDateRejectionInput,
   validateExamDateRequestInput,
   validateExamDateRequestStatusFilter,
+  validateExamResultInput,
 } from '../utils/validationUtils.js'
 
 // ---- Student: /api/student/exam-date-requests
@@ -65,4 +66,14 @@ export const reject = async (req, res) => {
     validateExamDateRejectionInput(req.body),
   )
   sendSuccess(res, { message: 'Exam date request rejected.', data: { request } })
+}
+
+// After the examination: Passed or Failed. Uses one attempt of the student.
+export const recordResult = async (req, res) => {
+  const request = await examDateRequestService.recordResult(
+    parseId(req.params.id),
+    req.user.id,
+    validateExamResultInput(req.body),
+  )
+  sendSuccess(res, { message: 'Examination result recorded.', data: { request } })
 }

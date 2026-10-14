@@ -7,11 +7,13 @@ import Home from './pages/Home'
 import ExamPapers from './pages/ExamPapers'
 import ExamPaperDetail from './pages/ExamPaperDetail'
 import Login from './pages/Login'
+import Reapply from './pages/Reapply'
 import Register from './pages/Register'
 import Registration from './pages/Registration'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminExamDateRequestDetails from './pages/admin/ExamDateRequestDetails'
 import AdminNotifications from './pages/admin/Notifications'
+import AdminReattemptRequestDetails from './pages/admin/ReattemptRequestDetails'
 import ManageUsers from './pages/admin/ManageUsers'
 import RegistrationFormDetails from './pages/admin/RegistrationFormDetails'
 import RegistrationForms from './pages/admin/RegistrationForms'
@@ -21,6 +23,7 @@ import ExamPaper from './pages/student/ExamPaper'
 import ExamResult from './pages/student/ExamResult'
 import Exams from './pages/student/Exams'
 import StudentNotifications from './pages/student/Notifications'
+import ReattemptPayment from './pages/student/ReattemptPayment'
 import StudentDashboard from './pages/student/StudentDashboard'
 import InstructorDashboard from './pages/instructor/InstructorDashboard'
 import { adminPanel } from './data/adminDashboardData'
@@ -35,6 +38,8 @@ function App() {
           <Route path="/" element={<Home />} />
           {/* /apply is the student application form; /register creates a portal account */}
           <Route path="/apply" element={<Registration />} />
+          {/* A new application from a student whose account is locked (they cannot log in) */}
+          <Route path="/reapply" element={<Reapply />} />
           <Route path="/login" element={<GuestRoute><Login /></GuestRoute>} />
           <Route path="/register" element={<GuestRoute><Register /></GuestRoute>} />
           <Route path="/exam-papers" element={<ExamPapers />} />
@@ -53,6 +58,10 @@ function App() {
           <Route path="registration-forms/:applicationId" element={<RegistrationFormDetails />} />
           <Route path="notifications" element={<AdminNotifications />} />
           <Route path="notifications/:requestId" element={<AdminExamDateRequestDetails />} />
+          <Route
+            path="notifications/reattempt-payments/:reattemptRequestId"
+            element={<AdminReattemptRequestDetails />}
+          />
         </Route>
         {/* Short address for the Registration Forms page */}
         <Route
@@ -65,8 +74,9 @@ function App() {
         >
           <Route index element={<StudentDashboard />} />
           <Route path="exams" element={<Exams />} />
-          {/* Listed before exams/:examType; "date-request" is not an exam category */}
+          {/* Listed before exams/:examType; these two are not exam categories */}
           <Route path="exams/date-request" element={<ExamDateRequest />} />
+          <Route path="exams/reattempt-payment" element={<ReattemptPayment />} />
           <Route path="exams/:examType" element={<ExamDetails />} />
           <Route path="exams/:examType/:paperId" element={<ExamPaper />} />
           <Route path="exams/:examType/:paperId/results/:attemptId" element={<ExamResult />} />

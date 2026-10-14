@@ -25,6 +25,7 @@ function PaymentDetailsStep({
   submitError,
   onChange,
   onBack,
+  submitLabel = 'Submit Registration',
 }) {
   const selectedPackage = packages.find(({ id }) => id === formData.packageId)
   // Step 3 is only reachable after a package is chosen; the fallback keeps rendering safe
@@ -91,7 +92,7 @@ function PaymentDetailsStep({
 
       <StepActions
         onBack={onBack}
-        nextLabel={submitting ? 'Submitting...' : 'Submit Registration'}
+        nextLabel={submitting ? 'Submitting...' : submitLabel}
         nextDisabled={submitting}
       />
     </>

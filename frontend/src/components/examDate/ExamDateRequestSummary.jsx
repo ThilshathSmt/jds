@@ -2,10 +2,14 @@ import { FaCircleCheck } from 'react-icons/fa6'
 import StatusBadge from '../dashboard/StatusBadge'
 import { formatExamDate, requestStatusLabels } from '../../utils/examDateUtils'
 import { formatDateTime } from '../../utils/formatUtils'
+import { formatAttempt, resultLabels } from '../../utils/licenceExamUtils'
 
 // Everything about one exam date request as label / value rows, for the student and the
 // admin alike. `showStudent` adds the student's name and Driving School ID (admin pages).
+// An approved request also shows its examination result (`request.result`).
 function ExamDateRequestSummary({ request, showStudent = false }) {
+  const { result } = request
+  const recorded = result && result.status !== 'PENDING'
   const rows = [
     { label: 'Request ID', value: `#${request.id}` },
     ...(showStudent
@@ -46,6 +50,23 @@ function ExamDateRequestSummary({ request, showStudent = false }) {
       : []),
     ...(request.status === 'REJECTED'
       ? [{ label: 'Rejection Reason', value: request.rejectionReason }]
+      : []),
+    ...(result
+      ? [
+          {
+            label: 'Examination Result',
+            value: <StatusBadge status={result.status} label={resultLabels[result.status]} />,
+          },
+        ]
+      : []),
+    ...(recorded
+      ? [
+          {
+            label: 'Attempt',
+            value: `${formatAttempt(result.attemptNumber, result.attemptsPerCycle)} (attempt cycle ${result.cycleNumber})`,
+          },
+          { label: 'Result Recorded', value: formatDateTime(result.recordedAt) },
+        ]
       : []),
     { label: 'Submitted', value: formatDateTime(request.createdAt) },
     ...(request.reviewedAt ? [{ label: 'Reviewed', value: formatDateTime(request.reviewedAt) }] : []),
