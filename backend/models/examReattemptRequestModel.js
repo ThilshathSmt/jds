@@ -8,6 +8,7 @@ import pool from '../config/database.js'
 const REQUEST_COLUMNS = `r.id, r.user_id, r.student_name, r.driving_school_id, r.cycle_id,
   c.cycle_number, r.failed_attempt_id, a.attempt_number,
   DATE_FORMAT(a.exam_date, '%Y-%m-%d') AS exam_date, a.result AS attempt_result,
+  a.reattempt_fee AS attempt_reattempt_fee,
   r.medical_report_required, r.reapplication_id, r.fee_amount, r.payment_method, r.status, r.medical_report_status,
   r.payment_status, r.rejection_reason, r.reviewed_at, r.created_at, r.updated_at`
 

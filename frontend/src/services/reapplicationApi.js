@@ -27,8 +27,9 @@ export const submitReapplication = ({ credentials, formData }) => {
   const body = new FormData()
   body.append('drivingSchoolId', credentials.drivingSchoolId)
   body.append('password', credentials.password)
-  for (const field of ['fullName', 'mobile', 'email', 'nic', 'address', 'packageId', 'paymentMethod', 'newMedicalReportConfirmed']) {
-    body.append(field, formData[field])
+  // `quotedMinimumPayment` is only compared with the backend's own amount, never charged
+  for (const field of ['fullName', 'mobile', 'email', 'nic', 'address', 'packageId', 'paymentMethod', 'newMedicalReportConfirmed', 'quotedMinimumPayment']) {
+    body.append(field, formData[field] ?? '')
   }
   body.append('receipt', formData.receipt)
   return apiRequest(PATH, { method: 'POST', body })

@@ -1,8 +1,9 @@
 import { FaCircleInfo } from 'react-icons/fa6'
 import InfoCard from './InfoCard'
-import { MINIMUM_PAYMENT_RATE, formatAmount } from '../../data/registrationData'
+import { formatAmount } from '../../data/registrationData'
 
-function PaymentInstructions({ minimumPayment, isFullPayment }) {
+// `advancePaymentPercent` is the admin-configured minimum share, from the backend
+function PaymentInstructions({ minimumPayment, isFullPayment, advancePaymentPercent }) {
   const amount = formatAmount(minimumPayment)
 
   return (
@@ -12,7 +13,7 @@ function PaymentInstructions({ minimumPayment, isFullPayment }) {
         <p className="font-semibold text-ink">
           {isFullPayment
             ? `Full payment of ${amount} is required for registration.`
-            : `A minimum payment of ${MINIMUM_PAYMENT_RATE * 100}% (${amount}) is required for registration.`}
+            : `A minimum payment of ${advancePaymentPercent}% (${amount}) is required for registration.`}
         </p>
         {!isFullPayment && (
           <p>Remaining balance can be paid later according to the school&apos;s payment terms.</p>

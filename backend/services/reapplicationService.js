@@ -16,7 +16,7 @@
 //
 // What the server alone decides, whatever a browser sends:
 //   - who the student is (the verified credentials) and that they must reapply (the lock)
-//   - the package name, price and minimum registration payment (config/packages.js)
+//   - the package name, price and minimum registration payment (settingsService.js)
 //   - that nothing is accepted until an admin has approved the application
 //   - that the student keeps their account: no user and no Driving School ID is created
 //   - that an approval unlocks once and creates exactly one cycle
@@ -27,7 +27,6 @@
 import path from 'node:path'
 import { withTransaction } from '../config/database.js'
 import { ATTEMPTS_PER_CYCLE } from '../config/licenceExam.js'
-import { findPackageById, getMinimumPayment } from '../config/packages.js'
 import * as applicationDocumentModel from '../models/applicationDocumentModel.js'
 import * as examReattemptRequestModel from '../models/examReattemptRequestModel.js'
 import * as licenceExamModel from '../models/licenceExamModel.js'
@@ -38,6 +37,7 @@ import { MEDICAL_REPORT_NOT_OBTAINED_MESSAGE } from '../utils/validationUtils.js
 import { RECEIPT_TYPES, hasValidSignature } from '../utils/fileUtils.js'
 import { verifyCredentials } from './authService.js'
 import { getAttemptHistory, lockCurrentCycle } from './licenceExamService.js'
+import { quoteRegistration } from './settingsService.js'
 import { NOTIFICATION_TYPES, markApplicationNotificationsRead, notify, notifyRole } from './notificationService.js'
 
 const NOT_FOUND = 'Registration application not found.'
@@ -155,9 +155,6 @@ export const submit = async (credentials, input, files = {}) => {
   }
   await checkFiles(files, REQUIRED_DOCUMENTS)
 
-  // The package and what must be paid for it come from the server's own catalogue
-  const selectedPackage = findPackageById(input.packageId)
-
   try {
     await withTransaction(async (db) => {
       // Locked for the transaction, and looked at again: this is what the saved rows rely on
@@ -167,6 +164,8 @@ export const submit = async (credentials, input, files = {}) => {
         throw new AppError(409, ALREADY_PENDING)
       }
       if (!(await findExhaustedCycle(user.id, db))) throw new AppError(409, NOT_LOCKED)
+      // The package and what must be paid for it, from the database as they are now
+      const terms = await quoteRegistration(input.packageId, input.quotedMinimumPayment, db)
 
       const applicationId = await applicationModel.createReapplication(
         {
@@ -174,10 +173,7 @@ export const submit = async (credentials, input, files = {}) => {
           ...input,
           // Never saved without an explicit confirmation, whoever calls this
           newMedicalReportConfirmed: input.newMedicalReportConfirmed === true,
-          packageId: selectedPackage.id,
-          packageName: selectedPackage.name,
-          packagePrice: selectedPackage.price,
-          minimumPayment: getMinimumPayment(selectedPackage.price),
+          ...terms,
         },
         db,
       )

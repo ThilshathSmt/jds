@@ -18,7 +18,7 @@
 // Every function takes `now` last. Callers leave it out; tests pass a fixed time.
 
 import { withTransaction } from '../config/database.js'
-import { ATTEMPTS_PER_CYCLE, REATTEMPT_FEE } from '../config/licenceExam.js'
+import { ATTEMPTS_PER_CYCLE } from '../config/licenceExam.js'
 import * as examDateRequestModel from '../models/examDateRequestModel.js'
 import * as licenceExamModel from '../models/licenceExamModel.js'
 import * as userModel from '../models/userModel.js'
@@ -32,6 +32,7 @@ import {
   lockCurrentCycle,
   requiresReattemptFee,
 } from './licenceExamService.js'
+import { getSettings } from './settingsService.js'
 import {
   NOTIFICATION_TYPES,
   markRequestNotificationsRead,
@@ -62,9 +63,10 @@ const toResult = (row, attempt) => {
     // Attempts left in that cycle after this one
     attemptsRemaining: failed ? ATTEMPTS_PER_CYCLE - attempt.attempt_number : 0,
     // What a failure costs: the reattempt fee for the next attempt of the cycle (after a
-    // first or second failure). A failure that used the last attempt costs no fee: the
-    // account is locked instead, until a reapplication is approved.
-    reattemptFee: failed && requiresReattemptFee(attempt.attempt_number) ? REATTEMPT_FEE : null,
+    // first or second failure), as fixed when the result was recorded. A failure that used
+    // the last attempt costs no fee: the account is locked instead, until a reapplication
+    // is approved.
+    reattemptFee: failed && requiresReattemptFee(attempt.attempt_number) ? attempt.reattempt_fee : null,
     reapplicationRequired: failed && exhaustsCycle(attempt.attempt_number),
     examDate: attempt.exam_date,
     recordedAt: attempt.recorded_at,
@@ -270,6 +272,10 @@ export const recordResult = async (id, adminId, { result }, now = new Date()) =>
         )
       }
 
+      // A first or second failure obliges the student to pay the reattempt fee in force now;
+      // the amount is kept with the attempt, so a later change of the fee does not alter it
+      const reattemptFee =
+        result === 'FAILED' && requiresReattemptFee(used + 1) ? (await getSettings(db)).reattemptFee : null
       await licenceExamModel.createAttempt(
         {
           userId: request.user_id,
@@ -278,6 +284,7 @@ export const recordResult = async (id, adminId, { result }, now = new Date()) =>
           examDateRequestId: id,
           examDate: request.approved_date,
           result,
+          reattemptFee,
           recordedBy: adminId,
           recordedAt: now,
         },

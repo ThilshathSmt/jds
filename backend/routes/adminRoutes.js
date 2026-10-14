@@ -4,6 +4,7 @@ import * as examDateRequestController from '../controllers/examDateRequestContro
 import * as examReattemptRequestController from '../controllers/examReattemptRequestController.js'
 import * as provisioningController from '../controllers/provisioningController.js'
 import * as applicationController from '../controllers/registrationApplicationController.js'
+import * as settingsController from '../controllers/settingsController.js'
 import { requireAuth } from '../middleware/authMiddleware.js'
 import { requireRole } from '../middleware/roleMiddleware.js'
 import userManagementRoutes from './userManagementRoutes.js'
@@ -27,6 +28,12 @@ router.post('/registration-forms/:id/suspend', applicationController.suspend)
 router.post('/registration-forms/:id/reject', applicationController.reject)
 router.delete('/registration-forms/:id', applicationController.remove)
 router.get('/registration-forms/:id/documents/:documentId', applicationController.getDocument)
+
+// Packages & Exam Penalties: course packages, the advance payment % and the reattempt fee
+router.get('/settings', settingsController.getAdminSettings)
+router.put('/settings', settingsController.updateSettings)
+router.post('/packages', settingsController.createPackage)
+router.put('/packages/:id', settingsController.updatePackage)
 
 // Requests for a physical driving licence exam date, reviewed on the Notifications page
 router.get('/exam-date-requests', examDateRequestController.list)

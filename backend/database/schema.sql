@@ -53,10 +53,65 @@ CREATE TABLE IF NOT EXISTS driving_school_id_sequences (
   last_number INT UNSIGNED NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- The course packages a student chooses from on the Apply Now and reapplication forms,
+-- managed by the admins on the "Packages & Exam Penalties" page. Prices are whole Sri
+-- Lankan rupees. A package is never deleted: it is deactivated, so it is no longer offered
+-- but applications that chose it still refer to it. An application keeps its own copy of
+-- the name, price and minimum payment (a snapshot), so a later change here never alters
+-- an application that has already been submitted.
+-- The first five rows are the school's original packages; their ids are the package ids
+-- earlier applications were saved with. INSERT IGNORE adds them once and never overwrites
+-- an admin's changes.
+CREATE TABLE IF NOT EXISTS driving_school_packages (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(150) NOT NULL,
+  price INT UNSIGNED NOT NULL,
+  is_active TINYINT(1) NOT NULL DEFAULT 1,
+  sort_order INT NOT NULL DEFAULT 0,
+  updated_by INT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_driving_school_packages_name (name),
+  KEY idx_driving_school_packages_active (is_active, sort_order),
+  CONSTRAINT fk_driving_school_packages_updated_by FOREIGN KEY (updated_by)
+    REFERENCES users (id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT IGNORE INTO driving_school_packages (id, name, price, sort_order) VALUES
+  (1, 'All Cars / Dual Purpose – Manual / Auto (B)', 40000, 1),
+  (2, 'VIP Course (Pick & Drop)', 60000, 2),
+  (3, 'Motorcycle (A, A-1)', 12500, 3),
+  (4, '1 Hour Individual Lesson (B)', 3500, 4),
+  (5, 'Theory Class', 3000, 5);
+
+-- School-wide settings an admin changes on the "Packages & Exam Penalties" page: one row
+-- per setting, whole numbers only.
+--   registration_advance_payment_percent: the minimum share of a package's price paid
+--     with a registration (1-100). Packages up to LKR 10,000 are always paid in full.
+--   exam_reattempt_fee: LKR owed after a first or second failed examination attempt.
+-- The value in force is copied wherever it is used (the application's minimum payment, the
+-- failed attempt's fee), so changing a setting only affects what comes after.
+-- INSERT IGNORE adds the starting values once and never overwrites an admin's change.
+CREATE TABLE IF NOT EXISTS system_settings (
+  setting_key VARCHAR(64) PRIMARY KEY,
+  setting_value INT UNSIGNED NOT NULL,
+  updated_by INT NULL,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_system_settings_updated_by FOREIGN KEY (updated_by)
+    REFERENCES users (id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES
+  ('registration_advance_payment_percent', 40),
+  ('exam_reattempt_fee', 2000);
+
 -- Applications submitted through the public "Apply Now" form.
 -- Submitting an application never creates a login account. When an admin approves it,
 -- a student Driving School ID is issued and stored here; the applicant then uses that ID
--- on the Register page. The account is reached through driving_school_ids.user_id:
+-- on the Register page. `package_id` is the driving_school_packages row chosen;
+-- `package_name`, `package_price` and `minimum_payment` are copied from it (and from the
+-- advance payment setting) when the application is submitted, and never change afterwards.
+-- The account is reached through driving_school_ids.user_id:
 --   registration_applications.driving_school_id -> driving_school_ids -> users
 -- Amounts are whole Sri Lankan rupees.
 --
@@ -259,6 +314,8 @@ CREATE TABLE IF NOT EXISTS exam_attempt_cycles (
 -- A FAILED first or second attempt of a cycle must be followed by an approved
 -- exam_reattempt_requests row (the reattempt fee) before the student may request another
 -- date. A FAILED third attempt costs no fee: it exhausts the cycle and locks the account.
+-- `reattempt_fee` is that obligation: the fee in force (system_settings) when the failure
+-- was recorded, NULL when no fee is owed. A later change of the setting never alters it.
 CREATE TABLE IF NOT EXISTS licence_exam_attempts (
   id INT PRIMARY KEY AUTO_INCREMENT,
   user_id INT NOT NULL,
@@ -267,6 +324,7 @@ CREATE TABLE IF NOT EXISTS licence_exam_attempts (
   exam_date_request_id INT NOT NULL,
   exam_date DATE NOT NULL,
   result ENUM('PASSED', 'FAILED') NOT NULL,
+  reattempt_fee INT UNSIGNED NULL,
   recorded_by INT NULL,
   recorded_at TIMESTAMP NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,

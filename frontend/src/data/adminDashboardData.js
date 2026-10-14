@@ -8,6 +8,7 @@ import {
   FaChalkboardUser,
   FaClipboardList,
   FaGaugeHigh,
+  FaSliders,
   FaUserGraduate,
   FaUserShield,
   FaUsersGear,
@@ -29,6 +30,11 @@ export const adminPanel = {
       icon: FaClipboardList,
     },
     { label: 'Notifications', to: '/admin-dashboard/notifications', icon: FaBell },
+    {
+      label: 'Packages & Exam Penalties',
+      to: '/admin-dashboard/packages-settings',
+      icon: FaSliders,
+    },
   ],
 }
 
