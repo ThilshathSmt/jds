@@ -29,7 +29,7 @@ export const validateRegister = ({ schoolId, name, email, password, confirmPassw
 }
 
 // Admin "Create Instructor" form. The Driving School ID is issued by the backend.
-export const validateInstructor = ({ name, email, password, confirmPassword }) => {
+export const validateInstructor = ({ name, email, password, confirmPassword, responsibility }) => {
   const errors = {}
   if (!name.trim()) errors.name = 'Full name is required.'
   else if (name.trim().length > 100) errors.name = 'Full name must be 100 characters or fewer.'
@@ -41,5 +41,6 @@ export const validateInstructor = ({ name, email, password, confirmPassword }) =
   }
   if (!confirmPassword) errors.confirmPassword = 'Please confirm the password.'
   else if (confirmPassword !== password) errors.confirmPassword = 'Passwords do not match.'
+  if (!responsibility) errors.responsibility = 'Please select what the instructor is responsible for.'
   return errors
 }

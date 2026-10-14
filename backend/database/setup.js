@@ -105,6 +105,12 @@ const ADDED_COLUMNS = [
     column: 'reattempt_fee',
     definition: 'INT UNSIGNED NULL AFTER result',
   },
+  // The vehicle an instructor is responsible for (NULL until assigned)
+  {
+    table: 'users',
+    column: 'responsibility',
+    definition: "ENUM('VAN', 'MOTOR_BIKE', 'THREE_WHEELER', 'BUS', 'TRACTOR') NULL AFTER locked_at",
+  },
   // The new medical report a cycle started from (NULL for first cycles and older ones)
   {
     table: 'exam_attempt_cycles',

@@ -4,10 +4,10 @@
 import pool from '../config/database.js'
 
 const USER_COLUMNS =
-  'id, driving_school_id, name, email, password_hash, role, status, session_version, locked_at, created_at, updated_at'
+  'id, driving_school_id, name, email, password_hash, role, status, session_version, locked_at, responsibility, created_at, updated_at'
 
 // Columns for admin listings: never the password hash
-const LIST_COLUMNS = 'id, driving_school_id, name, email, role, status, locked_at, created_at'
+const LIST_COLUMNS = 'id, driving_school_id, name, email, role, status, locked_at, responsibility, created_at'
 
 const findOne = async (db, where, value, { forUpdate = false } = {}) => {
   const [rows] = await db.execute(
@@ -25,13 +25,24 @@ export const findByDrivingSchoolId = (drivingSchoolId, db = pool) =>
 
 export const findByEmail = (email, db = pool) => findOne(db, 'email = ?', email)
 
-// Returns the new user's id
-export const create = async ({ drivingSchoolId, name, email, passwordHash, role }, db = pool) => {
+// Returns the new user's id. `responsibility` is for instructors only.
+export const create = async (
+  { drivingSchoolId, name, email, passwordHash, role, responsibility = null },
+  db = pool,
+) => {
   const [result] = await db.execute(
-    'INSERT INTO users (driving_school_id, name, email, password_hash, role) VALUES (?, ?, ?, ?, ?)',
-    [drivingSchoolId, name, email, passwordHash, role],
+    'INSERT INTO users (driving_school_id, name, email, password_hash, role, responsibility) VALUES (?, ?, ?, ?, ?, ?)',
+    [drivingSchoolId, name, email, passwordHash, role, responsibility],
   )
   return result.insertId
+}
+
+// Changes only the instructor's responsibility; every other field stays as it is
+export const updateResponsibility = async (id, responsibility, db = pool) => {
+  await db.execute("UPDATE users SET responsibility = ? WHERE id = ? AND role = 'instructor'", [
+    responsibility,
+    id,
+  ])
 }
 
 // Builds the WHERE clause shared by the admin list and its count.

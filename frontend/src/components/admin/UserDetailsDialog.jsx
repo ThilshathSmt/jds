@@ -4,6 +4,7 @@ import { FaArrowUpRightFromSquare, FaIdCard } from 'react-icons/fa6'
 import Modal from './Modal'
 import RoleBadge from './RoleBadge'
 import StatusBadge from '../dashboard/StatusBadge'
+import { getResponsibilityLabel } from '../../data/instructorData'
 import { getUser } from '../../services/userApi'
 import { formatDateTime, formatStatus } from '../../utils/formatUtils'
 
@@ -13,6 +14,9 @@ const getRows = (user) => {
     { label: 'Full Name', value: user.name },
     { label: 'Email', value: user.email },
     { label: 'Role', value: <RoleBadge role={user.role} /> },
+    ...(user.role === 'instructor'
+      ? [{ label: 'Responsibility For', value: getResponsibilityLabel(user.responsibility) ?? 'Not assigned' }]
+      : []),
     { label: 'Account Status', value: <StatusBadge status={formatStatus(user.status)} /> },
     ...(user.locked
       ? [

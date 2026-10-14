@@ -8,7 +8,7 @@ import * as applicationModel from '../models/registrationApplicationModel.js'
 import * as userModel from '../models/userModel.js'
 import AppError from '../utils/AppError.js'
 import { hashPassword } from '../utils/passwordUtils.js'
-import { MANAGED_ROLES } from '../utils/validationUtils.js'
+import { INSTRUCTOR_RESPONSIBILITIES, MANAGED_ROLES } from '../utils/validationUtils.js'
 import { issueDrivingSchoolId, previewNextId } from './provisioningService.js'
 
 const NOT_FOUND = 'User not found.'
@@ -25,8 +25,13 @@ const toManagedUser = (row) => ({
   // Locked after three failed examination attempts, until a reapplication is approved.
   // Activating or deactivating the account does not change it.
   locked: row.locked_at !== null,
+  // Instructors only: VAN, MOTOR_BIKE, THREE_WHEELER, BUS or TRACTOR, or null when an
+  // instructor created before responsibilities existed has not been given one yet
+  responsibility: row.role === 'instructor' ? row.responsibility : null,
   createdAt: row.created_at,
 })
+
+export const getResponsibilityLabel = (code) => INSTRUCTOR_RESPONSIBILITIES[code] ?? 'Not assigned'
 
 const toApplicationSummary = (row) => ({
   id: row.id,
@@ -82,7 +87,7 @@ export const getNextInstructorId = () => previewNextId('instructor')
 // Creates an instructor account with a newly issued JDS_INS_ ID in one transaction:
 // the ID, its registry record and the account are all saved, or nothing is (a rollback
 // also restores the sequence counter). The role is always 'instructor'.
-export const createInstructor = async ({ name, email, password }, adminId) => {
+export const createInstructor = async ({ name, email, password, responsibility }, adminId) => {
   // Hash before the transaction so the sequence row is not locked during the slow hash
   const passwordHash = await hashPassword(password)
 
@@ -97,7 +102,7 @@ export const createInstructor = async ({ name, email, password }, adminId) => {
         db,
       )
       const newUserId = await userModel.create(
-        { drivingSchoolId, name, email, passwordHash, role: 'instructor' },
+        { drivingSchoolId, name, email, passwordHash, role: 'instructor', responsibility },
         db,
       )
       const idRecord = await drivingSchoolIdModel.findByDrivingSchoolId(drivingSchoolId, db)
@@ -113,6 +118,19 @@ export const createInstructor = async ({ name, email, password }, adminId) => {
   }
 
   return toManagedUser(await userModel.findById(userId))
+}
+
+// Changes what an instructor is responsible for. Nothing else about the account changes:
+// name, e-mail, Driving School ID, password, status and sessions stay as they are.
+export const updateResponsibility = async (id, { responsibility }) => {
+  await withTransaction(async (db) => {
+    const user = await findManagedUser(id, db, { forUpdate: true })
+    if (user.role !== 'instructor') {
+      throw new AppError(409, 'Only instructor accounts have a responsibility.')
+    }
+    await userModel.updateResponsibility(id, responsibility, db)
+  })
+  return getDetails(id)
 }
 
 export const activate = async (id, adminId) => {
