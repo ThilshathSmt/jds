@@ -27,11 +27,21 @@ export const getNextInstructorId = async () => {
   return drivingSchoolId
 }
 
-// No role or Driving School ID is sent: the backend sets both
-export const createInstructor = async ({ name, email, password, confirmPassword }) => {
+// No role or Driving School ID is sent: the backend sets both. `responsibility` is one of
+// the codes in data/instructorData.js.
+export const createInstructor = async ({ name, email, password, confirmPassword, responsibility }) => {
   const { user } = await apiRequest(`${ADMIN_PATH}/instructors`, {
     method: 'POST',
-    body: { name, email, password, confirmPassword },
+    body: { name, email, password, confirmPassword, responsibility },
+  })
+  return user
+}
+
+// Instructors only. Changes nothing else about the account. Resolves with the updated user.
+export const updateResponsibility = async (id, responsibility) => {
+  const { user } = await apiRequest(`${ADMIN_PATH}/${id}/responsibility`, {
+    method: 'PUT',
+    body: { responsibility },
   })
   return user
 }

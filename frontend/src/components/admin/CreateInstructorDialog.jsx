@@ -5,10 +5,12 @@ import AuthMessage from '../auth/AuthMessage'
 import PasswordInput from '../auth/PasswordInput'
 import useAuthForm from '../auth/useAuthForm'
 import FormField from '../registration/FormField'
+import { responsibilityOptions } from '../../data/instructorData'
 import { createInstructor, getNextInstructorId } from '../../services/userApi'
 import { validateInstructor } from '../../utils/authValidation'
 
-const initialValues = { name: '', email: '', password: '', confirmPassword: '' }
+// `responsibility` starts empty: the admin must choose one
+const initialValues = { name: '', email: '', password: '', confirmPassword: '', responsibility: '' }
 
 // Admin form for a new instructor account. There is deliberately no role field: the
 // backend always creates an instructor and issues the next JDS_INS_ ID itself.
@@ -44,6 +46,18 @@ function CreateInstructorDialog({ onCreated, onClose }) {
         </FormField>
         <FormField id="email" label="Email Address" required error={errors.email}>
           <input type="email" autoComplete="off" maxLength={150} {...inputProps('email')} />
+        </FormField>
+        <FormField id="responsibility" label="Responsibility For" required error={errors.responsibility}>
+          <select {...inputProps('responsibility')}>
+            <option value="" disabled>
+              Select responsibility
+            </option>
+            {responsibilityOptions.map(({ value, label }) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
         </FormField>
         <FormField
           id="drivingSchoolId"

@@ -34,6 +34,19 @@ const USER_PAGE_SIZE_DEFAULT = 10
 const USER_PAGE_SIZE_MAX = 100
 const SEARCH_MAX_LENGTH = 100
 
+// What an instructor can be responsible for (users.responsibility). The labels are what the
+// admin pages show; keep them in step with frontend/src/data/instructorData.js.
+export const INSTRUCTOR_RESPONSIBILITIES = {
+  VAN: 'Van',
+  MOTOR_BIKE: 'Motor Bike',
+  THREE_WHEELER: 'Three Wheeler',
+  BUS: 'Bus',
+  TRACTOR: 'Tractor',
+}
+const RESPONSIBILITY_REQUIRED = 'Please select what the instructor is responsible for.'
+const getResponsibilityError = (value) =>
+  Object.hasOwn(INSTRUCTOR_RESPONSIBILITIES, value) ? '' : RESPONSIBILITY_REQUIRED
+
 export const PASSWORD_MIN_LENGTH = 8
 // bcrypt ignores everything after 72 bytes
 const PASSWORD_MAX_BYTES = 72
@@ -93,6 +106,14 @@ export const validateRegistrationInput = (body = {}) => {
   return input
 }
 
+// Admin changing an instructor's responsibility: only this field is read
+export const validateResponsibilityInput = (body = {}) => {
+  const responsibility = asTrimmedString(body.responsibility).toUpperCase()
+  const error = getResponsibilityError(responsibility)
+  if (error) throw new AppError(400, error, { responsibility: error })
+  return { responsibility }
+}
+
 // Admin creating an instructor account. Only these fields are read: a role, Driving School
 // ID, status or password hash sent by the client is ignored.
 export const validateInstructorInput = (body = {}) => {
@@ -100,6 +121,7 @@ export const validateInstructorInput = (body = {}) => {
     name: asTrimmedString(body.name),
     email: asTrimmedString(body.email).toLowerCase(),
     password: asString(body.password),
+    responsibility: asTrimmedString(body.responsibility).toUpperCase(),
   }
   const confirmPassword = asString(body.confirmPassword)
   const errors = {}
@@ -112,6 +134,8 @@ export const validateInstructorInput = (body = {}) => {
   if (passwordError) errors.password = passwordError
   if (!confirmPassword) errors.confirmPassword = 'Please confirm the password.'
   else if (confirmPassword !== input.password) errors.confirmPassword = 'Passwords do not match.'
+  const responsibilityError = getResponsibilityError(input.responsibility)
+  if (responsibilityError) errors.responsibility = responsibilityError
 
   throwIfInvalid(errors)
   return input

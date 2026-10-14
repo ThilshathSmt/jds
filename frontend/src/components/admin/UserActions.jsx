@@ -1,6 +1,8 @@
 import { useState } from 'react'
-import { FaBan, FaCircleCheck, FaEye, FaTrashCan } from 'react-icons/fa6'
+import { FaBan, FaCircleCheck, FaEye, FaTrashCan, FaUserPen } from 'react-icons/fa6'
 import ConfirmDialog from './ConfirmDialog'
+import EditResponsibilityDialog from './EditResponsibilityDialog'
+import { getResponsibilityLabel } from '../../data/instructorData'
 import { activateUser, deactivateUser, deleteUser } from '../../services/userApi'
 
 const actions = {
@@ -49,12 +51,13 @@ const actions = {
 const viewButtonClass =
   'inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs font-semibold text-ink transition hover:border-brand hover:text-brand'
 
-// View, Activate / Deactivate and Delete for one account row. Each change is confirmed
-// first. `onChanged(message)` is called after a successful change; `onView()` opens details.
+// View, Edit Responsibility (instructors only), Activate / Deactivate and Delete for one
+// account row. Each status change is confirmed first. `onChanged(message)` is called after a successful change; `onView()` opens details.
 function UserActions({ user, onView, onChanged }) {
   const [pending, setPending] = useState(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [editingResponsibility, setEditingResponsibility] = useState(false)
 
   const available = [user.status === 'active' ? 'deactivate' : 'activate', 'delete']
 
@@ -84,6 +87,16 @@ function UserActions({ user, onView, onChanged }) {
         <FaEye aria-hidden="true" />
         View
       </button>
+      {user.role === 'instructor' && (
+        <button
+          type="button"
+          onClick={() => setEditingResponsibility(true)}
+          className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-brand px-2 py-1.5 text-xs font-semibold text-white transition hover:bg-brand-dark"
+        >
+          <FaUserPen aria-hidden="true" />
+          Edit Responsibility
+        </button>
+      )}
       {available.map((key) => {
         const { label, icon: Icon, className } = actions[key]
         return (
@@ -99,6 +112,16 @@ function UserActions({ user, onView, onChanged }) {
         )
       })}
 
+      {editingResponsibility && (
+        <EditResponsibilityDialog
+          user={user}
+          onSaved={(updated) => {
+            setEditingResponsibility(false)
+            onChanged(`${updated.name}'s responsibility is now ${getResponsibilityLabel(updated.responsibility)}.`)
+          }}
+          onClose={() => setEditingResponsibility(false)}
+        />
+      )}
       {pending && (
         <ConfirmDialog
           title={actions[pending].title}

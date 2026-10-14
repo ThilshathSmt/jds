@@ -11,6 +11,7 @@ import CreateInstructorDialog from '../../components/admin/CreateInstructorDialo
 import RoleBadge from '../../components/admin/RoleBadge'
 import UserActions from '../../components/admin/UserActions'
 import UserDetailsDialog from '../../components/admin/UserDetailsDialog'
+import { getResponsibilityLabel } from '../../data/instructorData'
 import DashboardSection from '../../components/dashboard/DashboardSection'
 import DashboardTable from '../../components/dashboard/DashboardTable'
 import DashboardWelcome from '../../components/dashboard/DashboardWelcome'
@@ -105,7 +106,9 @@ function ManageUsers() {
 
   const handleCreated = (user) => {
     setCreating(false)
-    refresh(`Instructor account created for ${user.name}. Driving School ID: ${user.drivingSchoolId}`)
+    refresh(
+      `Instructor account created for ${user.name}. Driving School ID: ${user.drivingSchoolId}. Responsibility: ${getResponsibilityLabel(user.responsibility)}`,
+    )
   }
 
   const columns = [
@@ -113,6 +116,21 @@ function ManageUsers() {
     { key: 'name', label: 'Full Name' },
     { key: 'email', label: 'Email' },
     { key: 'role', label: 'Role', render: (row) => <RoleBadge role={row.role} /> },
+    {
+      key: 'responsibility',
+      label: 'Responsibility',
+      // Instructors only; one created before responsibilities existed may have none yet
+      render: (row) =>
+        row.role !== 'instructor' ? (
+          <span className="text-gray-400">–</span>
+        ) : row.responsibility ? (
+          <span data-responsibility={row.responsibility} className="font-medium text-ink">
+            {getResponsibilityLabel(row.responsibility)}
+          </span>
+        ) : (
+          <StatusBadge status="Pending" label="Not assigned" />
+        ),
+    },
     {
       key: 'status',
       label: 'Account Status',

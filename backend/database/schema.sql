@@ -17,6 +17,10 @@ CREATE TABLE IF NOT EXISTS users (
   -- "reapplication"), which clears it again. Separate from `status`: activating or
   -- deactivating an account never unlocks it.
   locked_at TIMESTAMP NULL,
+  -- Instructors only: the kind of vehicle the instructor is responsible for, chosen by an
+  -- admin when the account is created and changeable later. NULL for students and admins,
+  -- and for instructors created before it existed until an admin assigns one.
+  responsibility ENUM('VAN', 'MOTOR_BIKE', 'THREE_WHEELER', 'BUS', 'TRACTOR') NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uq_users_driving_school_id (driving_school_id),

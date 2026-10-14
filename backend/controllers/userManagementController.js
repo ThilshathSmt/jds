@@ -6,6 +6,7 @@ import { sendSuccess } from '../utils/responseUtils.js'
 import {
   parseId,
   validateInstructorInput,
+  validateResponsibilityInput,
   validateUserListQuery,
 } from '../utils/validationUtils.js'
 
@@ -31,7 +32,19 @@ export const createInstructor = async (req, res) => {
   )
   sendSuccess(res, {
     statusCode: 201,
-    message: `Instructor account created. Driving School ID: ${user.drivingSchoolId}`,
+    message: `Instructor account created. Driving School ID: ${user.drivingSchoolId}. Responsibility: ${userManagementService.getResponsibilityLabel(user.responsibility)}`,
+    data: { user },
+  })
+}
+
+// PUT /api/admin/users/:id/responsibility { responsibility }: instructors only
+export const updateResponsibility = async (req, res) => {
+  const user = await userManagementService.updateResponsibility(
+    parseId(req.params.id),
+    validateResponsibilityInput(req.body),
+  )
+  sendSuccess(res, {
+    message: `${user.name}'s responsibility is now ${userManagementService.getResponsibilityLabel(user.responsibility)}.`,
     data: { user },
   })
 }
