@@ -20,6 +20,16 @@ export const NOTIFICATION_TYPES = {
   reapplicationSubmitted: 'REAPPLICATION_SUBMITTED',
   reapplicationApproved: 'REAPPLICATION_APPROVED',
   reapplicationRejected: 'REAPPLICATION_REJECTED',
+  // Practical training and the practical driving test (linked by practicalCycleId)
+  practicalTestDateConfirmed: 'PRACTICAL_TEST_DATE_CONFIRMED',
+  practicalTestDateUpdated: 'PRACTICAL_TEST_DATE_UPDATED',
+  practicalTestPassed: 'PRACTICAL_TEST_PASSED',
+  practicalTestFailed: 'PRACTICAL_TEST_FAILED',
+  practicalAttemptsExhausted: 'PRACTICAL_ATTEMPTS_EXHAUSTED',
+  practicalPaymentSubmitted: 'PRACTICAL_PAYMENT_SUBMITTED',
+  practicalPaymentApproved: 'PRACTICAL_PAYMENT_APPROVED',
+  practicalPaymentRejected: 'PRACTICAL_PAYMENT_REJECTED',
+  practicalFeedbackSubmitted: 'PRACTICAL_FEEDBACK_SUBMITTED',
 }
 
 const toNotification = (row) => ({
@@ -30,13 +40,14 @@ const toNotification = (row) => ({
   examDateRequestId: row.exam_date_request_id,
   examReattemptRequestId: row.exam_reattempt_request_id,
   registrationApplicationId: row.registration_application_id,
+  practicalCycleId: row.practical_cycle_id,
   read: row.read_at !== null,
   readAt: row.read_at,
   createdAt: row.created_at,
 })
 
 // `notification` is { type, title, message, examDateRequestId?, examReattemptRequestId?,
-// registrationApplicationId? }.
+// registrationApplicationId?, practicalCycleId? }.
 // `message` is the short text shown in the list; the details are read from the request.
 export const notify = (userId, notification, db) =>
   notificationModel.create({ userId, ...notification }, db)

@@ -32,6 +32,7 @@ import {
   lockCurrentCycle,
   requiresReattemptFee,
 } from './licenceExamService.js'
+import { startFirstCycle } from './practicalService.js'
 import { getSettings } from './settingsService.js'
 import {
   NOTIFICATION_TYPES,
@@ -276,7 +277,7 @@ export const recordResult = async (id, adminId, { result }, now = new Date()) =>
       // the amount is kept with the attempt, so a later change of the fee does not alter it
       const reattemptFee =
         result === 'FAILED' && requiresReattemptFee(used + 1) ? (await getSettings(db)).reattemptFee : null
-      await licenceExamModel.createAttempt(
+      const attemptId = await licenceExamModel.createAttempt(
         {
           userId: request.user_id,
           cycleId: cycle.id,
@@ -291,7 +292,14 @@ export const recordResult = async (id, adminId, { result }, now = new Date()) =>
         db,
       )
       const accountLocked = result === 'FAILED' && exhaustsCycle(used + 1)
-      if (result === 'PASSED') await licenceExamModel.markCycleStatus(cycle.id, 'PASSED', db)
+      // A pass makes the student eligible for practical training: the first practical cycle,
+      // its provisional test date (approved exam date + 90 days, weekend -> Monday) and its
+      // 10 lessons, saved once with the result (a result is final, so it is never redone)
+      let practical = null
+      if (result === 'PASSED') {
+        await licenceExamModel.markCycleStatus(cycle.id, 'PASSED', db)
+        practical = await startFirstCycle({ userId: request.user_id, attemptId, examDate: request.approved_date }, db)
+      }
       if (accountLocked) {
         await licenceExamModel.markCycleStatus(cycle.id, 'EXHAUSTED', db)
         await userModel.setLocked(request.user_id, now, db)
@@ -306,9 +314,12 @@ export const recordResult = async (id, adminId, { result }, now = new Date()) =>
         result === 'PASSED'
           ? {
               type: NOTIFICATION_TYPES.examResultPassed,
-              title: 'Driving Licence Exam Passed',
-              message: 'Congratulations! You have passed your driving licence examination.',
+              title: 'Driving School Exam Passed',
+              message: practical
+                ? `Congratulations! You passed your driving school exam. Your provisional practical test date is ${formatLongDate(practical.provisionalTestDate)}. Your instructor assignments and lessons will be arranged.`
+                : 'Congratulations! You have passed your driving school exam.',
               examDateRequestId: id,
+              practicalCycleId: practical?.cycleId ?? null,
             }
           : accountLocked
             ? {

@@ -31,6 +31,21 @@ export const getSchoolDate = (now = new Date()) => {
   return `${parts.year}-${parts.month}-${parts.day}`
 }
 
+const localTimeFormat = new Intl.DateTimeFormat('en-GB', {
+  timeZone: SCHOOL_TIME_ZONE,
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+})
+
+// The time of day in Sri Lanka at the moment `now`, as 'HH:MM'
+export const getSchoolTime = (now = new Date()) => {
+  const parts = Object.fromEntries(
+    localTimeFormat.formatToParts(now).map(({ type, value }) => [type, value]),
+  )
+  return `${parts.hour}:${parts.minute}`
+}
+
 // Midnight UTC of the date, used only for weekday and day arithmetic. Returns null for
 // anything that is not a real calendar date (for example 2026-02-30).
 const toUtc = (isoDate) => {
@@ -49,6 +64,19 @@ export const isTuesday = (isoDate) => toUtc(isoDate)?.getUTCDay() === TUESDAY
 
 export const addDays = (isoDate, days) =>
   new Date(toUtc(isoDate).getTime() + days * DAY_MS).toISOString().slice(0, 10)
+
+// 0 = Sunday ... 6 = Saturday
+export const getWeekday = (isoDate) => toUtc(isoDate).getUTCDay()
+
+// `days` calendar days after `isoDate`; a Saturday or Sunday becomes the following Monday.
+// Pure date arithmetic on 'YYYY-MM-DD' strings, so no time zone can shift the result.
+export const addDaysToWeekday = (isoDate, days) => {
+  const date = addDays(isoDate, days)
+  const weekday = getWeekday(date)
+  if (weekday === 6) return addDays(date, 2)
+  if (weekday === 0) return addDays(date, 1)
+  return date
+}
 
 // '2026-10-20' -> 'Tuesday, 20 October 2026'
 export const formatLongDate = (isoDate) => {

@@ -5,6 +5,7 @@ import {
   FaBell,
   FaCalendarDay,
   FaCar,
+  FaCarSide,
   FaChartLine,
   FaCircleCheck,
   FaClipboardCheck,
@@ -25,6 +26,7 @@ export const studentPanel = {
   menuItems: [
     { label: 'Dashboard', to: '/student-dashboard', icon: FaGaugeHigh, end: true },
     { label: 'Exams', to: '/student-dashboard/exams', icon: FaFileSignature },
+    { label: 'Lessons', to: '/student-dashboard/lessons', icon: FaCarSide },
     { label: 'Notifications', to: '/student-dashboard/notifications', icon: FaBell },
   ],
 }

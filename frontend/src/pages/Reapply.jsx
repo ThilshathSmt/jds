@@ -360,7 +360,14 @@ function Reapply() {
               Your account is temporarily locked
             </h1>
             <p className="mt-3 text-gray-700">
-              You have used all three examination attempts. Submit a new registration application
+              You have used all three{' '}
+              {!status
+                ? 'examination or practical driving test'
+                : status.lockReason === 'PRACTICAL'
+                  ? 'practical driving test'
+                  : 'examination'}{' '}
+              attempts.
+              Submit a new registration application
               with a new medical report, choose a package and make the registration payment. Your
               account will be reactivated after admin approval.
             </p>

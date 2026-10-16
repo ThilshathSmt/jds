@@ -59,3 +59,11 @@ export const uploadReapplicationDocuments = multer({
   { name: 'medicalReport', maxCount: 1 },
   { name: 'receipt', maxCount: 1 },
 ])
+
+// Parses the practical reattempt payment form: text fields into req.body and the receipt
+// into req.file. Kept apart from the other uploads. Same file rules as above.
+export const uploadPracticalReceipt = multer({
+  storage: createStorage(env.practicalUploadsDir),
+  fileFilter,
+  limits: { fileSize: RECEIPT_MAX_BYTES, files: 1, fields: 10 },
+}).single('receipt')

@@ -93,6 +93,7 @@ INSERT IGNORE INTO driving_school_packages (id, name, price, sort_order) VALUES
 --   registration_advance_payment_percent: the minimum share of a package's price paid
 --     with a registration (1-100). Packages up to LKR 10,000 are always paid in full.
 --   exam_reattempt_fee: LKR owed after a first or second failed examination attempt.
+--   practical_reattempt_fee: LKR owed after a first or second failed practical driving test.
 -- The value in force is copied wherever it is used (the application's minimum payment, the
 -- failed attempt's fee), so changing a setting only affects what comes after.
 -- INSERT IGNORE adds the starting values once and never overwrites an admin's change.
@@ -107,7 +108,8 @@ CREATE TABLE IF NOT EXISTS system_settings (
 
 INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES
   ('registration_advance_payment_percent', 40),
-  ('exam_reattempt_fee', 2000);
+  ('exam_reattempt_fee', 2000),
+  ('practical_reattempt_fee', 3000);
 
 -- Applications submitted through the public "Apply Now" form.
 -- Submitting an application never creates a login account. When an admin approves it,
@@ -416,6 +418,186 @@ CREATE TABLE IF NOT EXISTS exam_reattempt_request_documents (
     REFERENCES exam_reattempt_requests (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- ---- Practical training and the practical driving test ----------------------------------
+--
+-- A practical cycle is one round of practical training and practical test attempts.
+--   Cycle 1 starts when the student passes the driving school examination: the admin's
+--   PASSED result for an approved exam date request (`source_attempt_id`, the
+--   licence_exam_attempts row). `exam_date` is that request's approved date and
+--   `provisional_test_date` is exam_date + 90 days, moved to the next Monday when it falls
+--   on a Saturday or Sunday. It is worked out once, by the server, and never changed.
+--   A later cycle starts when an admin approves the reapplication (`application_id`) of a
+--   student locked after three failed practical tests. It has no provisional date: the
+--   admin sets the test date.
+--   ACTIVE -> PASSED (a practical test was passed)
+--   ACTIVE -> EXHAUSTED (three practical tests failed: the account is locked)
+-- Cycles are never changed back or deleted. The UNIQUE keys mean one passed exam or one
+-- approved reapplication starts one cycle at most.
+CREATE TABLE IF NOT EXISTS practical_cycles (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  user_id INT NOT NULL,
+  cycle_number SMALLINT UNSIGNED NOT NULL,
+  source_attempt_id INT NULL,
+  application_id INT NULL,
+  exam_date DATE NULL,
+  provisional_test_date DATE NULL,
+  status ENUM('ACTIVE', 'PASSED', 'EXHAUSTED') NOT NULL DEFAULT 'ACTIVE',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_practical_cycles_number (user_id, cycle_number),
+  UNIQUE KEY uq_practical_cycles_source_attempt (source_attempt_id),
+  UNIQUE KEY uq_practical_cycles_application (application_id),
+  KEY idx_practical_cycles_status (status, created_at),
+  CONSTRAINT fk_practical_cycles_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+  CONSTRAINT fk_practical_cycles_source_attempt FOREIGN KEY (source_attempt_id)
+    REFERENCES licence_exam_attempts (id) ON DELETE SET NULL,
+  CONSTRAINT fk_practical_cycles_application FOREIGN KEY (application_id)
+    REFERENCES registration_applications (id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- The instructors (at most four, enforced by the server) who teach a cycle's lessons
+CREATE TABLE IF NOT EXISTS practical_cycle_instructors (
+  cycle_id INT NOT NULL,
+  instructor_id INT NOT NULL,
+  assigned_by INT NULL,
+  assigned_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (cycle_id, instructor_id),
+  KEY idx_practical_cycle_instructors_instructor (instructor_id),
+  CONSTRAINT fk_practical_cycle_instructors_cycle FOREIGN KEY (cycle_id)
+    REFERENCES practical_cycles (id) ON DELETE CASCADE,
+  CONSTRAINT fk_practical_cycle_instructors_instructor FOREIGN KEY (instructor_id)
+    REFERENCES users (id) ON DELETE CASCADE,
+  CONSTRAINT fk_practical_cycle_instructors_assigned_by FOREIGN KEY (assigned_by)
+    REFERENCES users (id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- The 10 practical lessons of a cycle: created together with the cycle (lesson_number 1-10,
+-- UNIQUE per cycle, so saving or reloading never adds more) and scheduled by the admin.
+-- `attendance` is marked by the lesson's instructor only:
+--   PENDING -> ATTENDED | ABSENT (with who marked it and when)
+CREATE TABLE IF NOT EXISTS practical_lessons (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  cycle_id INT NOT NULL,
+  lesson_number TINYINT UNSIGNED NOT NULL,
+  instructor_id INT NULL,
+  lesson_date DATE NULL,
+  start_time TIME NULL,
+  location VARCHAR(150) NULL,
+  attendance ENUM('PENDING', 'ATTENDED', 'ABSENT') NOT NULL DEFAULT 'PENDING',
+  attendance_marked_by INT NULL,
+  attendance_marked_at TIMESTAMP NULL,
+  updated_by INT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_practical_lessons_number (cycle_id, lesson_number),
+  KEY idx_practical_lessons_instructor (instructor_id, lesson_date),
+  CONSTRAINT fk_practical_lessons_cycle FOREIGN KEY (cycle_id) REFERENCES practical_cycles (id) ON DELETE CASCADE,
+  CONSTRAINT fk_practical_lessons_instructor FOREIGN KEY (instructor_id) REFERENCES users (id) ON DELETE SET NULL,
+  CONSTRAINT fk_practical_lessons_marked_by FOREIGN KEY (attendance_marked_by) REFERENCES users (id) ON DELETE SET NULL,
+  CONSTRAINT fk_practical_lessons_updated_by FOREIGN KEY (updated_by) REFERENCES users (id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- An instructor's feedback on a student of a cycle they teach. DRAFT while the instructor
+-- is writing it (only they see it), SUBMITTED once sent: then it is final and the admins see
+-- it. It is advisory: the admin decides the practical test date.
+CREATE TABLE IF NOT EXISTS instructor_feedbacks (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  cycle_id INT NOT NULL,
+  student_id INT NOT NULL,
+  instructor_id INT NOT NULL,
+  status ENUM('DRAFT', 'SUBMITTED') NOT NULL DEFAULT 'DRAFT',
+  driving_skills TEXT NULL,
+  strengths TEXT NULL,
+  improvements TEXT NULL,
+  safety_awareness ENUM('EXCELLENT', 'GOOD', 'FAIR', 'POOR') NULL,
+  comments TEXT NULL,
+  recommendation ENUM('READY_FOR_TEST', 'NEEDS_MORE_PRACTICE') NULL,
+  submitted_at TIMESTAMP NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY idx_instructor_feedbacks_cycle (cycle_id, status),
+  KEY idx_instructor_feedbacks_instructor (instructor_id, status),
+  KEY idx_instructor_feedbacks_submitted (status, submitted_at),
+  CONSTRAINT fk_instructor_feedbacks_cycle FOREIGN KEY (cycle_id) REFERENCES practical_cycles (id) ON DELETE CASCADE,
+  CONSTRAINT fk_instructor_feedbacks_student FOREIGN KEY (student_id) REFERENCES users (id) ON DELETE CASCADE,
+  CONSTRAINT fk_instructor_feedbacks_instructor FOREIGN KEY (instructor_id) REFERENCES users (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- The lessons a feedback is about: only lessons its instructor taught
+CREATE TABLE IF NOT EXISTS instructor_feedback_lessons (
+  feedback_id INT NOT NULL,
+  lesson_id INT NOT NULL,
+  PRIMARY KEY (feedback_id, lesson_id),
+  CONSTRAINT fk_instructor_feedback_lessons_feedback FOREIGN KEY (feedback_id)
+    REFERENCES instructor_feedbacks (id) ON DELETE CASCADE,
+  CONSTRAINT fk_instructor_feedback_lessons_lesson FOREIGN KEY (lesson_id)
+    REFERENCES practical_lessons (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- The practical driving test attempts of a cycle (at most three, numbered 1-3, UNIQUE per
+-- cycle). A row is written when the admin confirms the test date and the result is filled
+-- in once afterwards, on or after `test_date`; a recorded result is final.
+-- Attempt 1's date is the cycle's final practical test date (the provisional one stays on
+-- practical_cycles). `reattempt_fee` is the practical reattempt fee owed for a failed
+-- first or second attempt, fixed when the result is recorded (NULL when none is owed).
+CREATE TABLE IF NOT EXISTS practical_test_attempts (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  cycle_id INT NOT NULL,
+  user_id INT NOT NULL,
+  attempt_number TINYINT UNSIGNED NOT NULL,
+  test_date DATE NOT NULL,
+  result ENUM('PASSED', 'FAILED') NULL,
+  remarks VARCHAR(500) NULL,
+  reattempt_fee INT UNSIGNED NULL,
+  scheduled_by INT NULL,
+  scheduled_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  recorded_by INT NULL,
+  recorded_at TIMESTAMP NULL,
+  UNIQUE KEY uq_practical_test_attempts_number (cycle_id, attempt_number),
+  KEY idx_practical_test_attempts_user (user_id),
+  CONSTRAINT fk_practical_test_attempts_cycle FOREIGN KEY (cycle_id) REFERENCES practical_cycles (id) ON DELETE CASCADE,
+  CONSTRAINT fk_practical_test_attempts_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+  CONSTRAINT fk_practical_test_attempts_scheduled_by FOREIGN KEY (scheduled_by) REFERENCES users (id) ON DELETE SET NULL,
+  CONSTRAINT fk_practical_test_attempts_recorded_by FOREIGN KEY (recorded_by) REFERENCES users (id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- The practical reattempt fee paid after a failed first or second practical test, with its
+-- receipt (stored on disk as `stored_name`). An admin verifies it:
+--   PENDING -> APPROVED: the next practical test may be scheduled
+--   PENDING -> REJECTED (with a reason): the student submits valid proof again
+-- `pending` (1 while PENDING) allows one pending payment per student; `approved` (1 once
+-- APPROVED) allows one approved payment per failed attempt. `fee_amount` is the failed
+-- attempt's own fee, never a value from the browser.
+CREATE TABLE IF NOT EXISTS practical_reattempt_payments (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  user_id INT NOT NULL,
+  cycle_id INT NOT NULL,
+  failed_attempt_id INT NOT NULL,
+  fee_amount INT UNSIGNED NOT NULL,
+  payment_method ENUM('bank-transfer', 'visit-branch') NOT NULL,
+  status ENUM('PENDING', 'APPROVED', 'REJECTED') NOT NULL DEFAULT 'PENDING',
+  pending TINYINT NULL DEFAULT 1,
+  approved TINYINT NULL,
+  rejection_reason VARCHAR(300) NULL,
+  original_name VARCHAR(255) NOT NULL,
+  stored_name VARCHAR(100) NOT NULL,
+  mime_type VARCHAR(100) NOT NULL,
+  size_bytes INT UNSIGNED NOT NULL,
+  reviewed_by INT NULL,
+  reviewed_at TIMESTAMP NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_practical_reattempt_payments_one_pending (user_id, pending),
+  UNIQUE KEY uq_practical_reattempt_payments_one_approved (failed_attempt_id, approved),
+  UNIQUE KEY uq_practical_reattempt_payments_stored_name (stored_name),
+  KEY idx_practical_reattempt_payments_cycle (cycle_id),
+  CONSTRAINT fk_practical_reattempt_payments_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+  CONSTRAINT fk_practical_reattempt_payments_cycle FOREIGN KEY (cycle_id) REFERENCES practical_cycles (id) ON DELETE CASCADE,
+  CONSTRAINT fk_practical_reattempt_payments_attempt FOREIGN KEY (failed_attempt_id)
+    REFERENCES practical_test_attempts (id) ON DELETE CASCADE,
+  CONSTRAINT fk_practical_reattempt_payments_reviewed_by FOREIGN KEY (reviewed_by) REFERENCES users (id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- Notifications shown under the bell and on the Notifications pages. One row per
 -- recipient (`user_id`), so every user has their own read state: a message for the admins
 -- is stored once for each admin account. `read_at` is NULL until the recipient reads it.
@@ -431,6 +613,7 @@ CREATE TABLE IF NOT EXISTS notifications (
   exam_date_request_id INT NULL,
   exam_reattempt_request_id INT NULL,
   registration_application_id INT NULL,
+  practical_cycle_id INT NULL,
   read_at TIMESTAMP NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   KEY idx_notifications_user (user_id, created_at),
@@ -442,5 +625,7 @@ CREATE TABLE IF NOT EXISTS notifications (
   CONSTRAINT fk_notifications_exam_reattempt_request FOREIGN KEY (exam_reattempt_request_id)
     REFERENCES exam_reattempt_requests (id) ON DELETE CASCADE,
   CONSTRAINT fk_notifications_registration_application FOREIGN KEY (registration_application_id)
-    REFERENCES registration_applications (id) ON DELETE CASCADE
+    REFERENCES registration_applications (id) ON DELETE CASCADE,
+  CONSTRAINT fk_notifications_practical_cycle FOREIGN KEY (practical_cycle_id)
+    REFERENCES practical_cycles (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

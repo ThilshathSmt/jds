@@ -4,6 +4,7 @@ import * as examDateRequestController from '../controllers/examDateRequestContro
 import * as examReattemptRequestController from '../controllers/examReattemptRequestController.js'
 import * as provisioningController from '../controllers/provisioningController.js'
 import * as applicationController from '../controllers/registrationApplicationController.js'
+import * as practicalController from '../controllers/practicalController.js'
 import * as settingsController from '../controllers/settingsController.js'
 import { requireAuth } from '../middleware/authMiddleware.js'
 import { requireRole } from '../middleware/roleMiddleware.js'
@@ -34,6 +35,20 @@ router.get('/settings', settingsController.getAdminSettings)
 router.put('/settings', settingsController.updateSettings)
 router.post('/packages', settingsController.createPackage)
 router.put('/packages/:id', settingsController.updatePackage)
+
+// Lessons: practical training after the driving school exam, and the practical test
+router.get('/practical/cycles', practicalController.listCycles)
+router.get('/practical/instructors', practicalController.listInstructors)
+router.get('/practical/cycles/:id', practicalController.getCycle)
+router.put('/practical/cycles/:id/instructors', practicalController.setInstructors)
+router.put('/practical/cycles/:id/lessons/:lessonNumber', practicalController.updateLesson)
+router.post('/practical/cycles/:id/test-date', practicalController.scheduleTest)
+router.post('/practical/cycles/:id/attempts/:attemptNumber/result', practicalController.recordResult)
+router.post('/practical/payments/:paymentId/approve', practicalController.approvePayment)
+router.post('/practical/payments/:paymentId/reject', practicalController.rejectPayment)
+router.get('/practical/payments/:paymentId/receipt', practicalController.getPaymentReceipt)
+// Feedbacks: submitted instructor feedback
+router.get('/practical/feedbacks', practicalController.listFeedbacks)
 
 // Requests for a physical driving licence exam date, reviewed on the Notifications page
 router.get('/exam-date-requests', examDateRequestController.list)

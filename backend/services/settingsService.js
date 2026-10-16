@@ -18,6 +18,7 @@ import AppError from '../utils/AppError.js'
 export const SETTING_KEYS = {
   advancePaymentPercent: 'registration_advance_payment_percent',
   reattemptFee: 'exam_reattempt_fee',
+  practicalReattemptFee: 'practical_reattempt_fee',
 }
 
 const PACKAGE_NOT_FOUND = 'Package not found.'
@@ -93,10 +94,12 @@ export const getAdminSettings = async () => {
     packages: packages.map(toPackage),
     advancePaymentPercent: settings.advancePaymentPercent,
     reattemptFee: settings.reattemptFee,
+    practicalReattemptFee: settings.practicalReattemptFee,
     fullPaymentThreshold: FULL_PAYMENT_THRESHOLD,
     settingsUpdatedAt: {
       advancePaymentPercent: rows[SETTING_KEYS.advancePaymentPercent]?.updatedAt ?? null,
       reattemptFee: rows[SETTING_KEYS.reattemptFee]?.updatedAt ?? null,
+      practicalReattemptFee: rows[SETTING_KEYS.practicalReattemptFee]?.updatedAt ?? null,
     },
   }
 }

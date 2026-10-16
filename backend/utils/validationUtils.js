@@ -1,4 +1,5 @@
 import { EXAM_RESULTS } from '../config/licenceExam.js'
+import { isLessonTimeSlot } from '../config/practical.js'
 import { PAYMENT_METHODS } from '../config/packages.js'
 import AppError from './AppError.js'
 import { addDays, getSchoolDate, isTuesday, isValidDate } from './dateUtils.js'
@@ -457,7 +458,8 @@ export const validatePackageInput = (body = {}) => {
   return input
 }
 
-// The settings being changed: any of { advancePaymentPercent, reattemptFee }
+// The settings being changed: any of { advancePaymentPercent, reattemptFee,
+// practicalReattemptFee }
 export const validateSettingsInput = (body = {}) => {
   const input = {}
   const errors = {}
@@ -467,13 +469,158 @@ export const validateSettingsInput = (body = {}) => {
       errors.advancePaymentPercent = 'Enter a whole percentage from 1 to 100.'
     }
   }
-  if (body.reattemptFee !== undefined) {
-    input.reattemptFee = asWholeNumber(body.reattemptFee)
-    if (!(input.reattemptFee >= 1 && input.reattemptFee <= REATTEMPT_FEE_MAX)) {
-      errors.reattemptFee = `Enter a fee in whole rupees between 1 and ${REATTEMPT_FEE_MAX.toLocaleString('en-US')}.`
+  for (const name of ['reattemptFee', 'practicalReattemptFee']) {
+    if (body[name] === undefined) continue
+    input[name] = asWholeNumber(body[name])
+    if (!(input[name] >= 1 && input[name] <= REATTEMPT_FEE_MAX)) {
+      errors[name] = `Enter a fee in whole rupees between 1 and ${REATTEMPT_FEE_MAX.toLocaleString('en-US')}.`
     }
   }
   if (Object.keys(input).length === 0) throw new AppError(400, 'Nothing to update.')
   throwIfInvalid(errors)
   return input
+}
+
+// ---- Practical training and the practical driving test
+
+const PRACTICAL_CYCLE_STATUSES = ['ACTIVE', 'PASSED', 'EXHAUSTED']
+const LOCATION_MAX_LENGTH = 150
+const REMARKS_MAX_LENGTH = 500
+const FEEDBACK_TEXT_MAX_LENGTH = 2000
+const asPositiveId = (value) => {
+  const number = asWholeNumber(value)
+  return Number.isSafeInteger(number) && number >= 1 ? number : null
+}
+
+// Optional ?status= filter of the admin Lessons list
+export const validatePracticalStatusFilter = (value) => {
+  if (value === undefined || value === '') return undefined
+  const status = asTrimmedString(value).toUpperCase()
+  if (!PRACTICAL_CYCLE_STATUSES.includes(status)) {
+    throw new AppError(400, `Status must be one of: ${PRACTICAL_CYCLE_STATUSES.join(', ')}.`)
+  }
+  return status
+}
+
+// The instructors assigned to a student: a list of distinct user ids (the service checks
+// the limit of four and that they are active instructors)
+export const validateInstructorIdsInput = (body = {}) => {
+  const list = Array.isArray(body.instructorIds) ? body.instructorIds : null
+  const ids = list?.map(asPositiveId)
+  if (!ids || ids.some((id) => id === null) || new Set(ids).size !== ids.length) {
+    const message = 'Choose each instructor once.'
+    throw new AppError(400, message, { instructorIds: message })
+  }
+  return { instructorIds: ids }
+}
+
+// One lesson's schedule: date, time and instructor required, location optional. The time
+// must be one of the 15-minute slots from 07:00 to 19:00; whether the date is allowed for
+// the student is checked by the service.
+export const validateLessonInput = (body = {}) => {
+  const input = {
+    instructorId: asPositiveId(body.instructorId),
+    date: asTrimmedString(body.date),
+    time: asTrimmedString(body.time) || null,
+    location: asTrimmedString(body.location) || null,
+  }
+  const errors = {}
+  if (!input.instructorId) errors.instructorId = 'Choose the instructor for this lesson.'
+  if (!isValidDate(input.date)) errors.date = 'Choose a valid lesson date.'
+  if (!input.time) errors.time = 'Choose the lesson time.'
+  else if (!isLessonTimeSlot(input.time)) {
+    errors.time = 'Choose a time between 7:00 AM and 7:00 PM in 15-minute steps (for example 7:15 AM).'
+  }
+  if (input.location && input.location.length > LOCATION_MAX_LENGTH) {
+    errors.location = `Location must be ${LOCATION_MAX_LENGTH} characters or fewer.`
+  }
+  throwIfInvalid(errors)
+  return input
+}
+
+// The admin's practical test date decision: keep the provisional date, or a chosen date
+export const validateTestScheduleInput = (body = {}) => {
+  if (body.keepProvisional === true) return { keepProvisional: true, testDate: null }
+  const testDate = asTrimmedString(body.testDate)
+  if (!isValidDate(testDate)) {
+    const message = 'Choose a valid practical test date.'
+    throw new AppError(400, message, { testDate: message })
+  }
+  return { keepProvisional: false, testDate }
+}
+
+export const validatePracticalResultInput = (body = {}) => {
+  const result = asTrimmedString(body.result).toUpperCase()
+  const remarks = asTrimmedString(body.remarks) || null
+  const errors = {}
+  if (!EXAM_RESULTS.includes(result)) errors.result = 'Please select Passed or Failed.'
+  if (remarks && remarks.length > REMARKS_MAX_LENGTH) errors.remarks = `Remarks must be ${REMARKS_MAX_LENGTH} characters or fewer.`
+  throwIfInvalid(errors)
+  return { result, remarks }
+}
+
+export const validateAttendanceInput = (body = {}) => {
+  const attendance = asTrimmedString(body.attendance).toUpperCase()
+  if (!['ATTENDED', 'ABSENT'].includes(attendance)) {
+    const message = 'Mark the student as Attended or Absent.'
+    throw new AppError(400, message, { attendance: message })
+  }
+  return { attendance }
+}
+
+const SAFETY_RATING_VALUES = ['EXCELLENT', 'GOOD', 'FAIR', 'POOR']
+const RECOMMENDATION_VALUES = ['READY_FOR_TEST', 'NEEDS_MORE_PRACTICE']
+
+// An instructor's feedback. Completeness for submitting is checked by the service; here
+// only the shape and limits. `submit` must be a real true to submit.
+export const validateFeedbackInput = (body = {}) => {
+  const text = (name) => asTrimmedString(body[name]) || null
+  const input = {
+    cycleId: asPositiveId(body.cycleId),
+    lessonIds: Array.isArray(body.lessonIds) ? body.lessonIds.map(asPositiveId) : [],
+    drivingSkills: text('drivingSkills'),
+    strengths: text('strengths'),
+    improvements: text('improvements'),
+    safetyAwareness: asTrimmedString(body.safetyAwareness).toUpperCase() || null,
+    comments: text('comments'),
+    recommendation: asTrimmedString(body.recommendation).toUpperCase() || null,
+    submit: body.submit === true,
+  }
+  const errors = {}
+  if (!input.cycleId) errors.cycleId = 'Choose the student.'
+  if (input.lessonIds.some((id) => id === null) || new Set(input.lessonIds).size !== input.lessonIds.length) {
+    errors.lessonIds = 'Choose each lesson once.'
+  }
+  for (const name of ['drivingSkills', 'strengths', 'improvements', 'comments']) {
+    if (input[name] && input[name].length > FEEDBACK_TEXT_MAX_LENGTH) {
+      errors[name] = `At most ${FEEDBACK_TEXT_MAX_LENGTH} characters.`
+    }
+  }
+  if (input.safetyAwareness && !SAFETY_RATING_VALUES.includes(input.safetyAwareness)) {
+    errors.safetyAwareness = 'Choose a safety awareness rating.'
+  }
+  if (input.recommendation && !RECOMMENDATION_VALUES.includes(input.recommendation)) {
+    errors.recommendation = 'Choose a recommendation.'
+  }
+  throwIfInvalid(errors)
+  return input
+}
+
+// Filters of the admin Feedbacks page: ?search=&instructorId=&from=&to=&cycleId=
+export const validateFeedbackFilters = (query = {}) => {
+  const filters = {
+    search: asTrimmedString(query.search).slice(0, SEARCH_MAX_LENGTH) || undefined,
+    instructorId: query.instructorId ? asPositiveId(query.instructorId) : undefined,
+    cycleId: query.cycleId ? asPositiveId(query.cycleId) : undefined,
+    from: asTrimmedString(query.from) || undefined,
+    to: asTrimmedString(query.to) || undefined,
+  }
+  if (filters.instructorId === null || filters.cycleId === null) throw new AppError(400, 'Invalid filter.')
+  for (const name of ['from', 'to']) {
+    if (filters[name] && !isValidDate(filters[name])) throw new AppError(400, 'Dates must be YYYY-MM-DD.')
+  }
+  if (filters.from && filters.to && filters.from > filters.to) {
+    throw new AppError(400, 'The "from" date must not be after the "to" date.')
+  }
+  return filters
 }
