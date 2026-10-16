@@ -34,7 +34,7 @@ const validatePackage = ({ name, price }) => {
   return errors
 }
 
-const validateSettings = ({ advancePaymentPercent, reattemptFee }) => {
+const validateSettings = ({ advancePaymentPercent, reattemptFee, practicalReattemptFee }) => {
   const errors = {}
   const percent = Number(advancePaymentPercent)
   if (!isWhole(advancePaymentPercent) || percent < 1 || percent > 100) {
@@ -43,6 +43,10 @@ const validateSettings = ({ advancePaymentPercent, reattemptFee }) => {
   const fee = Number(reattemptFee)
   if (!isWhole(reattemptFee) || fee < 1 || fee > FEE_MAX) {
     errors.reattemptFee = 'Enter a whole amount in LKR greater than 0.'
+  }
+  const practicalFee = Number(practicalReattemptFee)
+  if (!isWhole(practicalReattemptFee) || practicalFee < 1 || practicalFee > FEE_MAX) {
+    errors.practicalReattemptFee = 'Enter a whole amount in LKR greater than 0.'
   }
   return errors
 }
@@ -63,6 +67,7 @@ function SettingsForm({ settings, onSaved, onToast }) {
   const [values, setValues] = useState({
     advancePaymentPercent: String(settings.advancePaymentPercent),
     reattemptFee: String(settings.reattemptFee),
+    practicalReattemptFee: String(settings.practicalReattemptFee),
   })
   const [serverErrors, setServerErrors] = useState({})
   const [showErrors, setShowErrors] = useState(false)
@@ -72,7 +77,8 @@ function SettingsForm({ settings, onSaved, onToast }) {
   const errorFor = (name) => (showErrors || serverErrors[name] ? errors[name] : undefined)
   const changed =
     Number(values.advancePaymentPercent) !== settings.advancePaymentPercent ||
-    Number(values.reattemptFee) !== settings.reattemptFee
+    Number(values.reattemptFee) !== settings.reattemptFee ||
+    Number(values.practicalReattemptFee) !== settings.practicalReattemptFee
 
   // The effect of the percentage on the cheapest active package paid in part, as an example
   const example = settings.packages
@@ -96,6 +102,7 @@ function SettingsForm({ settings, onSaved, onToast }) {
       const saved = await updateSettings({
         advancePaymentPercent: Number(values.advancePaymentPercent),
         reattemptFee: Number(values.reattemptFee),
+        practicalReattemptFee: Number(values.practicalReattemptFee),
       })
       setShowErrors(false)
       onSaved(saved)
@@ -162,12 +169,37 @@ function SettingsForm({ settings, onSaved, onToast }) {
           booked. Fees already owed keep the amount set when the failure was recorded.
         </p>
       </div>
+      <div>
+        <label htmlFor="practicalReattemptFee" className="mb-1.5 block font-semibold text-ink">
+          Practical Test Reattempt Fee (LKR) <span className="text-danger">*</span>
+        </label>
+        <input
+          id="practicalReattemptFee"
+          type="number"
+          inputMode="numeric"
+          min={1}
+          step={1}
+          value={values.practicalReattemptFee}
+          onChange={update('practicalReattemptFee')}
+          aria-invalid={Boolean(errorFor('practicalReattemptFee'))}
+          aria-describedby="practicalReattemptFee-help practicalReattemptFee-error"
+          className={inputClass(errorFor('practicalReattemptFee'))}
+        />
+        <FieldError id="practicalReattemptFee-error" message={errorFor('practicalReattemptFee')} />
+        <p id="practicalReattemptFee-help" className="mt-1 text-sm text-gray-600">
+          Charged after a failed 1st or 2nd practical driving test, before the next test is
+          scheduled. The first practical test of every cycle is free; fees already owed keep their
+          amount.
+        </p>
+      </div>
       <div className="flex flex-wrap items-center justify-between gap-3 md:col-span-2">
         <p className="text-xs text-gray-500">
           Last changed: advance payment{' '}
           {settings.settingsUpdatedAt.advancePaymentPercent ? formatDateTime(settings.settingsUpdatedAt.advancePaymentPercent) : '–'}
           , reattempt fee{' '}
           {settings.settingsUpdatedAt.reattemptFee ? formatDateTime(settings.settingsUpdatedAt.reattemptFee) : '–'}
+          , practical fee{' '}
+          {settings.settingsUpdatedAt.practicalReattemptFee ? formatDateTime(settings.settingsUpdatedAt.practicalReattemptFee) : '–'}
         </p>
         <button
           type="submit"
@@ -402,7 +434,7 @@ function PackagesSettings() {
           <DashboardSection title="Payment & Penalty Settings" icon={FaTags}>
             {/* Remounted after a save so the form starts from the saved values */}
             <SettingsForm
-              key={`${settings.advancePaymentPercent}-${settings.reattemptFee}`}
+              key={`${settings.advancePaymentPercent}-${settings.reattemptFee}-${settings.practicalReattemptFee}`}
               settings={settings}
               onSaved={setSettings}
               onToast={setToast}

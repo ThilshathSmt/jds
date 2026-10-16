@@ -37,6 +37,7 @@ import { MEDICAL_REPORT_NOT_OBTAINED_MESSAGE } from '../utils/validationUtils.js
 import { RECEIPT_TYPES, hasValidSignature } from '../utils/fileUtils.js'
 import { verifyCredentials } from './authService.js'
 import { getAttemptHistory, lockCurrentCycle } from './licenceExamService.js'
+import * as practicalService from './practicalService.js'
 import { quoteRegistration } from './settingsService.js'
 import { NOTIFICATION_TYPES, markApplicationNotificationsRead, notify, notifyRole } from './notificationService.js'
 
@@ -83,6 +84,16 @@ const findExhaustedCycle = async (userId, db) => {
   return { cycle, attempts }
 }
 
+// Why the student must reapply: THEORY when all driving school exam attempts of the
+// current cycle failed, PRACTICAL when all practical test attempts of the latest practical
+// cycle failed. Null when neither (nothing to reapply for).
+const findLockReason = async (userId, db) => {
+  const theory = await findExhaustedCycle(userId, db)
+  if (theory) return { kind: 'THEORY', cycle: theory.cycle }
+  const practical = await practicalService.findExhaustedCycle(userId, db)
+  return practical ? { kind: 'PRACTICAL', cycle: practical } : null
+}
+
 // Checks the credentials and that the account is locked for a reapplication. The same
 // answer is given for an unknown ID and a wrong password; only someone who knows the
 // password learns anything about the account.
@@ -104,6 +115,8 @@ export const getStatus = async (credentials) => {
   return {
     student: { name: user.name, drivingSchoolId: user.driving_school_id },
     attemptsPerCycle: ATTEMPTS_PER_CYCLE,
+    // THEORY: driving school exam attempts used | PRACTICAL: practical test attempts used
+    lockReason: (await findLockReason(user.id))?.kind ?? 'THEORY',
     // NONE: nothing submitted yet | NEW: awaiting review | REJECTED: submit again
     applicationStatus: latest?.status === 'NEW' || latest?.status === 'REJECTED' ? latest.status : 'NONE',
     application: latest ? toReapplication(latest) : null,
@@ -147,7 +160,7 @@ const checkFiles = async (files, required) => {
 // not saved, and the caller removes it.
 export const submit = async (credentials, input, files = {}) => {
   const user = await verifyLockedStudent(credentials)
-  if (!(await findExhaustedCycle(user.id))) throw new AppError(409, NOT_LOCKED)
+  if (!(await findLockReason(user.id))) throw new AppError(409, NOT_LOCKED)
   if (input.newMedicalReportConfirmed !== true) {
     throw new AppError(400, MEDICAL_REPORT_NOT_OBTAINED_MESSAGE, {
       newMedicalReportConfirmed: MEDICAL_REPORT_NOT_OBTAINED_MESSAGE,
@@ -163,7 +176,7 @@ export const submit = async (credentials, input, files = {}) => {
       if (await applicationModel.findPendingReapplication(user.id, db)) {
         throw new AppError(409, ALREADY_PENDING)
       }
-      if (!(await findExhaustedCycle(user.id, db))) throw new AppError(409, NOT_LOCKED)
+      if (!(await findLockReason(user.id, db))) throw new AppError(409, NOT_LOCKED)
       // The package and what must be paid for it, from the database as they are now
       const terms = await quoteRegistration(input.packageId, input.quotedMinimumPayment, db)
 
@@ -237,6 +250,14 @@ export const getReviewDetails = async (application) => {
     (request) => request.reapplication_id === application.id,
   )
   const verification = VERIFICATION_BY_STATUS[application.status] ?? 'PENDING'
+  // Decided applications say what they started; an undecided one is judged by the lock now
+  const practicalHistory = await practicalService.getExhaustedCycleHistory(application.user_id)
+  const startedPractical = practicalHistory.find((cycle) => cycle.applicationId === application.id)
+  const lockReason = startedPractical
+    ? 'PRACTICAL'
+    : startedCycle
+      ? 'THEORY'
+      : ((await findLockReason(application.user_id))?.kind ?? 'THEORY')
   const toCycle = (cycle) => ({
     cycleNumber: cycle.cycle_number,
     applicationId: cycle.application_id,
@@ -268,6 +289,10 @@ export const getReviewDetails = async (application) => {
         rejectionReason: row.rejection_reason,
       })),
     attemptsPerCycle: ATTEMPTS_PER_CYCLE,
+    // THEORY: after three failed driving school exams | PRACTICAL: after three failed
+    // practical tests (`practicalCycles` is that history)
+    lockReason,
+    practicalCycles: practicalHistory,
     cycles: cycles.map(toCycle),
     // The cycle whose three failures led to this application, and the one it started
     exhaustedCycle: endedCycle ? toCycle(endedCycle) : null,
@@ -336,9 +361,9 @@ export const approve = async (id, adminId, now = new Date()) => {
 
       // Whoever holds the cycle is the only one adding a cycle for this student
       const current = await lockCurrentCycle(user.id, db)
-      const exhausted = await findExhaustedCycle(user.id, db)
-      if (!exhausted || exhausted.cycle.id !== current.id) {
-        throw new AppError(409, `This student has not used all ${ATTEMPTS_PER_CYCLE} attempts of the current cycle.`)
+      const reason = await findLockReason(user.id, db)
+      if (!reason || (reason.kind === 'THEORY' && reason.cycle.id !== current.id)) {
+        throw new AppError(409, `This student has not used all ${ATTEMPTS_PER_CYCLE} attempts of the current examination or practical test cycle.`)
       }
       const documents = await applicationDocumentModel.findByApplicationId(id, db)
       // Confirmed by the student (or, on older reapplications, uploaded)
@@ -362,16 +387,22 @@ export const approve = async (id, adminId, now = new Date()) => {
       )
       if (!changed) throw new AppError(409, DECIDED_MESSAGES.APPROVED)
 
-      // UNIQUE (user_id, cycle_number) and UNIQUE (application_id) refuse a second cycle
-      await licenceExamModel.createCycle(
-        {
-          userId: user.id,
-          cycleNumber: current.cycle_number + 1,
-          applicationId: id,
-          medicalReportDocumentId: medicalReport?.id ?? null,
-        },
-        db,
-      )
+      // UNIQUE (user_id, cycle_number) and UNIQUE (application_id) refuse a second cycle.
+      // After three failed driving school exams: a new exam cycle. After three failed
+      // practical tests: a new practical cycle (fresh lessons, no attempts used).
+      if (reason.kind === 'THEORY') {
+        await licenceExamModel.createCycle(
+          {
+            userId: user.id,
+            cycleNumber: current.cycle_number + 1,
+            applicationId: id,
+            medicalReportDocumentId: medicalReport?.id ?? null,
+          },
+          db,
+        )
+      } else {
+        await practicalService.startNextCycle({ userId: user.id, applicationId: id }, db)
+      }
       await userModel.setLocked(user.id, null, db)
       await notify(
         user.id,

@@ -3,6 +3,8 @@
 
 import {
   FaCalendarCheck,
+  FaCarSide,
+  FaCommentDots,
   FaCalendarDay,
   FaClipboardCheck,
   FaGaugeHigh,
@@ -17,7 +19,11 @@ export const instructorPanel = {
   panelTitle: 'Instructor Panel',
   user: { name: 'Instructor', role: 'Instructor', icon: FaUserTie, avatar: null },
   // The remaining instructor menu items will be added here: { label, to, icon }
-  menuItems: [{ label: 'Dashboard', to: '/instructor-dashboard', icon: FaGaugeHigh, end: true }],
+  menuItems: [
+    { label: 'Dashboard', to: '/instructor-dashboard', icon: FaGaugeHigh, end: true },
+    { label: 'Lessons', to: '/instructor-dashboard/lessons', icon: FaCarSide },
+    { label: 'Feedbacks', to: '/instructor-dashboard/feedbacks', icon: FaCommentDots },
+  ],
 }
 
 // TODO: Replace dashboard statistics with backend data

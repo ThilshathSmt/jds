@@ -4,7 +4,7 @@
 import pool from '../config/database.js'
 
 const NOTIFICATION_COLUMNS =
-  'id, user_id, type, title, message, exam_date_request_id, exam_reattempt_request_id, registration_application_id, read_at, created_at'
+  'id, user_id, type, title, message, exam_date_request_id, exam_reattempt_request_id, registration_application_id, practical_cycle_id, read_at, created_at'
 
 // One notification for one recipient. Returns its id.
 export const create = async (
@@ -16,14 +16,15 @@ export const create = async (
     examDateRequestId = null,
     examReattemptRequestId = null,
     registrationApplicationId = null,
+    practicalCycleId = null,
   },
   db = pool,
 ) => {
   const [result] = await db.execute(
     `INSERT INTO notifications
        (user_id, type, title, message, exam_date_request_id, exam_reattempt_request_id,
-        registration_application_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        registration_application_id, practical_cycle_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       userId,
       type,
@@ -32,6 +33,7 @@ export const create = async (
       examDateRequestId,
       examReattemptRequestId,
       registrationApplicationId,
+      practicalCycleId,
     ],
   )
   return result.insertId

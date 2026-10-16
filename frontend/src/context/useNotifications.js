@@ -15,8 +15,9 @@ export const useNotifications = () => {
 // Where a notification leads for each role: the page that shows the request it is about.
 // Returns null when the role has no such page.
 export const getNotificationPath = (notification, role) => {
-  const { examDateRequestId, examReattemptRequestId, registrationApplicationId } = notification
+  const { examDateRequestId, examReattemptRequestId, registrationApplicationId, practicalCycleId } = notification
   if (role === 'admin') {
+    if (practicalCycleId) return `/admin-dashboard/lessons/${practicalCycleId}`
     if (registrationApplicationId) {
       return `/admin-dashboard/registration-forms/${registrationApplicationId}`
     }
@@ -28,6 +29,7 @@ export const getNotificationPath = (notification, role) => {
       : '/admin-dashboard/notifications'
   }
   if (role === 'student') {
+    if (practicalCycleId) return `/student-dashboard/notifications?practical=${practicalCycleId}`
     if (registrationApplicationId) {
       return `/student-dashboard/notifications?reapplication=${registrationApplicationId}`
     }

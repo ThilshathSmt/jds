@@ -4,6 +4,8 @@
 import {
   FaBell,
   FaBookOpen,
+  FaCarSide,
+  FaCommentDots,
   FaCalendarCheck,
   FaChalkboardUser,
   FaClipboardList,
@@ -29,6 +31,8 @@ export const adminPanel = {
       to: '/admin-dashboard/registration-forms',
       icon: FaClipboardList,
     },
+    { label: 'Lessons', to: '/admin-dashboard/lessons', icon: FaCarSide },
+    { label: 'Feedbacks', to: '/admin-dashboard/feedbacks', icon: FaCommentDots },
     { label: 'Notifications', to: '/admin-dashboard/notifications', icon: FaBell },
     {
       label: 'Packages & Exam Penalties',

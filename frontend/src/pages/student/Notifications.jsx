@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import {
   FaBell,
   FaCalendarCheck,
@@ -15,9 +15,11 @@ import DashboardWelcome from '../../components/dashboard/DashboardWelcome'
 import ExamDateRequestSummary from '../../components/examDate/ExamDateRequestSummary'
 import { NextActionLink } from '../../components/licenceExam/AttemptSummaryCard'
 import ReattemptRequestSummary from '../../components/licenceExam/ReattemptRequestSummary'
+import PracticalSummary from '../../components/practical/PracticalSummary'
 import { useNotifications } from '../../context/useNotifications'
 import { getMyExamDateRequest } from '../../services/examDateRequestApi'
 import { getMyLicenceExam, getMyReattemptRequest } from '../../services/licenceExamApi'
+import { getMyPracticalCycle } from '../../services/practicalApi'
 import { getMyReapplication } from '../../services/reapplicationApi'
 import { formatExamDate } from '../../utils/examDateUtils'
 import { formatDateTime } from '../../utils/formatUtils'
@@ -247,6 +249,45 @@ function ReapplicationDialog({ reapplicationId, onClose }) {
 
 const readId = (value) => (/^[1-9][0-9]*$/.test(value ?? '') ? Number(value) : null)
 
+// Practical training and the practical test: the original and final test dates, lesson
+// progress, attempts and what to do next. Loaded fresh, so it shows where things stand now.
+function PracticalDialog({ cycleId, onClose }) {
+  const [cycle, setCycle] = useState(null)
+  const [error, setError] = useState('')
+  useEffect(() => {
+    let active = true
+    getMyPracticalCycle(cycleId)
+      .then((loaded) => active && setCycle(loaded))
+      .catch((loadError) => active && setError(loadError.message))
+    return () => {
+      active = false
+    }
+  }, [cycleId])
+  return (
+    <Modal title="Practical Training Details" icon={FaCalendarCheck} onClose={onClose} className={dialogClass}>
+      {!cycle ? (
+        <p role={error ? 'alert' : 'status'} className="py-6 text-center text-gray-600">
+          {error || 'Loading details...'}
+        </p>
+      ) : (
+        <>
+          <PracticalSummary cycle={cycle} />
+          <p className="mt-4 text-sm text-gray-700">
+            The final practical test date is the one confirmed by the school. Please prepare well,
+            and contact the school if you cannot attend on that date. Your lesson schedule and
+            progress are on the Lessons page.
+          </p>
+          <div className="mt-5 flex justify-end">
+            <Link to="/student-dashboard/lessons" className="btn btn-primary !rounded-lg !px-5 !py-2">
+              Go to Lessons
+            </Link>
+          </div>
+        </>
+      )}
+    </Modal>
+  )
+}
+
 // Student-only page: every notification sent to the signed-in student. The list shows a
 // short line for each; "View details" opens what it is about. The bell links here with
 // ?request=<id> (an exam date request or its result), ?payment=<id> (a reattempt payment)
@@ -259,6 +300,7 @@ function Notifications() {
   const openRequestId = readId(searchParams.get('request'))
   const openReattemptRequestId = readId(searchParams.get('payment'))
   const openReapplicationId = readId(searchParams.get('reapplication'))
+  const openPracticalId = readId(searchParams.get('practical'))
 
   const run = (action) => {
     setActionError('')
@@ -268,7 +310,9 @@ function Notifications() {
   const viewDetails = (notification) => {
     if (!notification.read) run(() => markRead(notification.id))
     setSearchParams(
-      notification.registrationApplicationId
+      notification.practicalCycleId
+        ? { practical: String(notification.practicalCycleId) }
+        : notification.registrationApplicationId
         ? { reapplication: String(notification.registrationApplicationId) }
         : notification.examReattemptRequestId
           ? { payment: String(notification.examReattemptRequestId) }
@@ -338,7 +382,8 @@ function Notifications() {
                   <p className="mt-2 text-xs text-gray-500">{formatDateTime(notification.createdAt)}</p>
                 </div>
                 <div className="flex shrink-0 flex-wrap gap-2">
-                  {(notification.examDateRequestId ||
+                  {(notification.practicalCycleId ||
+                    notification.examDateRequestId ||
                     notification.examReattemptRequestId ||
                     notification.registrationApplicationId) && (
                     <button
@@ -366,6 +411,9 @@ function Notifications() {
         )}
       </DashboardSection>
 
+      {openPracticalId && (
+        <PracticalDialog key={`practical-${openPracticalId}`} cycleId={openPracticalId} onClose={closeDialog} />
+      )}
       {openRequestId && (
         <RequestDialog key={`request-${openRequestId}`} requestId={openRequestId} onClose={closeDialog} />
       )}

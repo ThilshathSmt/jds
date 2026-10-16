@@ -111,6 +111,12 @@ const ADDED_COLUMNS = [
     column: 'responsibility',
     definition: "ENUM('VAN', 'MOTOR_BIKE', 'THREE_WHEELER', 'BUS', 'TRACTOR') NULL AFTER locked_at",
   },
+  // Notifications about a practical training cycle (lessons, practical test, payments)
+  {
+    table: 'notifications',
+    column: 'practical_cycle_id',
+    definition: 'INT NULL AFTER registration_application_id',
+  },
   // The new medical report a cycle started from (NULL for first cycles and older ones)
   {
     table: 'exam_attempt_cycles',
@@ -144,6 +150,20 @@ const BACKFILLS = [
       SET r.failed_attempt_id = a.id
     WHERE r.failed_attempt_id IS NULL`,
   "UPDATE exam_reattempt_requests SET approved = 1 WHERE status = 'APPROVED' AND approved IS NULL",
+  // Students who passed the driving school examination before practical training existed:
+  // their first practical cycle, with the provisional test date worked out the same way as
+  // the server does (exam date + 90 days; Saturday -> +2, Sunday -> +1, to the Monday).
+  // No notification is sent for these. Their 10 lessons are created when first needed.
+  `INSERT IGNORE INTO practical_cycles (user_id, cycle_number, source_attempt_id, exam_date, provisional_test_date)
+   SELECT a.user_id, 1, a.id, a.exam_date,
+          CASE DAYOFWEEK(DATE_ADD(a.exam_date, INTERVAL 90 DAY))
+            WHEN 7 THEN DATE_ADD(a.exam_date, INTERVAL 92 DAY)
+            WHEN 1 THEN DATE_ADD(a.exam_date, INTERVAL 91 DAY)
+            ELSE DATE_ADD(a.exam_date, INTERVAL 90 DAY) END
+     FROM licence_exam_attempts a
+     JOIN users u ON u.id = a.user_id AND u.role = 'student'
+    WHERE a.result = 'PASSED'
+      AND NOT EXISTS (SELECT 1 FROM practical_cycles p WHERE p.user_id = a.user_id)`,
   // Failures recorded before the fee was stored with them: the amount already submitted for
   // them, or else the fee that applied then (LKR 2,000)
   `UPDATE licence_exam_attempts a
@@ -249,6 +269,12 @@ const ADDED_FOREIGN_KEYS = [
     column: 'registration_application_id',
     references: 'registration_applications',
     name: 'fk_notifications_registration_application',
+  },
+  {
+    table: 'notifications',
+    column: 'practical_cycle_id',
+    references: 'practical_cycles',
+    name: 'fk_notifications_practical_cycle',
   },
   {
     table: 'exam_attempt_cycles',

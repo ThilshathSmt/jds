@@ -80,7 +80,7 @@ export const register = async ({ drivingSchoolId, name, email, password }) => {
 // an admin approves a new registration application (see reapplicationService.js)
 export const LOCKED_CODE = 'REAPPLICATION_REQUIRED'
 export const LOCKED_MESSAGE =
-  'Your account is locked because all three examination attempts have been used. Submit a new registration application with a new medical report, a package and the registration payment. Your account will be reactivated after admin approval.'
+  'Your account is locked because all three attempts of your driving school exam or practical driving test have been used. Submit a new registration application with a new medical report, a package and the registration payment. Your account will be reactivated after admin approval.'
 export const lockedError = () => new AppError(403, LOCKED_MESSAGE, undefined, LOCKED_CODE)
 
 // Checks a Driving School ID and password and returns the account's row. Used by login and

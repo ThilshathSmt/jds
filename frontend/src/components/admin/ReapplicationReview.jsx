@@ -243,7 +243,10 @@ function ReapplicationReview({ application }) {
     medicalReport,
     registrationPayment,
     legacyPayment,
+    lockReason,
+    practicalCycles = [],
   } = application.reapplication
+  const practical = lockReason === 'PRACTICAL'
 
   const accountRows = student
     ? [
@@ -257,7 +260,8 @@ function ReapplicationReview({ application }) {
               <StatusBadge status="REJECTED" label="Locked" />
               <span className="mt-1 block text-sm font-normal text-gray-600">
                 Locked {student.lockedAt ? `since ${formatDateTime(student.lockedAt)} ` : ''}after
-                three failed examination attempts. Approving this application reactivates it.
+                three failed {practical ? 'practical driving tests' : 'examination attempts'}. Approving
+                this application reactivates it.
               </span>
             </span>
           ) : (
@@ -313,8 +317,9 @@ function ReapplicationReview({ application }) {
         className="flex items-start gap-3 rounded-2xl border border-danger/20 bg-danger-soft px-5 py-4 font-semibold text-danger-dark"
       >
         <FaTriangleExclamation aria-hidden="true" className="mt-1 shrink-0" />
-        Reapplication after {attemptsPerCycle} failed examination attempts
-        {exhaustedCycle ? ` (cycle ${exhaustedCycle.cycleNumber})` : ''}. This is a new registration
+        {practical
+          ? `Reapplication after ${attemptsPerCycle} failed practical driving tests. Approval starts a new practical training cycle.`
+          : `Reapplication after ${attemptsPerCycle} failed examination attempts${exhaustedCycle ? ` (cycle ${exhaustedCycle.cycleNumber})` : ''}.`} This is a new registration
         application for an existing student account.
       </p>
 
@@ -366,6 +371,35 @@ function ReapplicationReview({ application }) {
           </p>
         )}
       </DashboardSection>
+
+      {practicalCycles.length > 0 && (
+        <DashboardSection title="Practical Driving Test History" icon={FaClockRotateLeft}>
+          <ul className="flex flex-col gap-3" data-practical-history>
+            {practicalCycles.map((cycle) => (
+              <li key={cycle.cycleNumber} className="rounded-xl border border-gray-200 p-3">
+                <p className="mb-2 font-semibold text-ink">
+                  Practical cycle {cycle.cycleNumber}:{' '}
+                  {cycle.attempts.filter((attempt) => attempt.result === 'FAILED').length} failed of{' '}
+                  {cycle.attempts.length} attempt(s) · {cycle.status}
+                </p>
+                {cycle.attempts.length === 0 ? (
+                  <p className="text-sm text-gray-600">No practical test taken in this cycle.</p>
+                ) : (
+                  <ul className="flex flex-col gap-1 text-sm">
+                    {cycle.attempts.map((attempt) => (
+                      <li key={attempt.id} className="flex flex-wrap items-center gap-2">
+                        Attempt {attempt.attemptNumber} · {attempt.testDate}
+                        <StatusBadge status={attempt.result === 'PENDING' ? 'PENDING' : attempt.result} label={attempt.result === 'PENDING' ? 'Scheduled' : attempt.result === 'PASSED' ? 'Passed' : 'Failed'} />
+                        {attempt.remarks && <span className="text-gray-600">{attempt.remarks}</span>}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            ))}
+          </ul>
+        </DashboardSection>
+      )}
 
       <DashboardSection title="Previous Examination History" icon={FaClockRotateLeft}>
         {exhaustedCycle && (
