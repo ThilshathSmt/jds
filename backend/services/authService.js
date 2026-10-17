@@ -21,48 +21,67 @@ const ID_UNAVAILABLE_MESSAGES = {
   revoked: 'This Driving School ID is no longer valid. Please contact the school.',
 }
 
-// Registers a user against an ID the school has issued. An ID works exactly once.
-// The role comes from the issued ID, never from the request.
-export const register = async ({ drivingSchoolId, name, email, password }) => {
+// The code sent when the ID already has an account: the page sends the student to Login
+export const ALREADY_REGISTERED_CODE = 'ALREADY_REGISTERED'
+
+// Checks that `drivingSchoolId` may be used to create an account now, and returns it with the
+// approved application it was issued for. Only student IDs are registered here (instructor
+// accounts are created by an admin, admin accounts by the seeder). `forUpdate` locks the ID
+// row for the surrounding transaction, so two registrations cannot both use it.
+const findRegistrableId = async (drivingSchoolId, db, { forUpdate = false } = {}) => {
+  const idRecord = await drivingSchoolIdModel.findByDrivingSchoolId(drivingSchoolId, db, { forUpdate })
+  if (!idRecord) {
+    throw new AppError(404, 'Driving School ID not found. Please use the ID given to you by the school.', {
+      drivingSchoolId: 'Driving School ID not found.',
+    })
+  }
+  if (idRecord.role !== 'student') {
+    throw new AppError(403, 'This Driving School ID cannot be registered here. Please contact the school.')
+  }
+  if (idRecord.status === 'assigned') {
+    throw new AppError(409, 'An account has already been created with this Driving School ID. Please log in.', undefined, ALREADY_REGISTERED_CODE)
+  }
+  if (idRecord.status !== 'available') throw new AppError(403, ID_UNAVAILABLE_MESSAGES[idRecord.status])
+  // A student ID is only valid while it belongs to an APPROVED application
+  const application = await applicationModel.findFirstByDrivingSchoolId(idRecord.driving_school_id, db)
+  if (application?.status !== 'APPROVED') {
+    throw new AppError(403, 'The application for this Driving School ID has not been approved, so an account cannot be created yet.')
+  }
+  if (!application.email) {
+    throw new AppError(409, 'Your application has no e-mail address on record. Please contact the school to add it.')
+  }
+  return { idRecord, application }
+}
+
+// "Verify ID": the name and e-mail of the approved application, for the student to check
+// before choosing a password. Nothing else about the application is returned.
+export const verifyRegistrationId = async ({ drivingSchoolId }) => {
+  const { idRecord, application } = await findRegistrableId(drivingSchoolId)
+  return {
+    drivingSchoolId: idRecord.driving_school_id,
+    name: application.full_name,
+    email: application.email,
+  }
+}
+
+// Registers a student account against an ID the school has issued with an approved
+// application. An ID works exactly once. The name and e-mail are the application's (never
+// the request's) and the role comes from the issued ID.
+export const register = async ({ drivingSchoolId, password }) => {
   const passwordHash = await hashPassword(password)
 
   const userId = await withTransaction(async (db) => {
-    const idRecord = await drivingSchoolIdModel.findByDrivingSchoolId(drivingSchoolId, db, {
-      forUpdate: true,
-    })
-    if (!idRecord) {
-      throw new AppError(
-        404,
-        'Driving School ID not found. Please use the ID given to you by the school.',
-      )
-    }
-    // Admin accounts are created by the seeder only, never through public registration
-    if (idRecord.role === 'admin') {
-      throw new AppError(403, 'This Driving School ID cannot be used for registration.')
-    }
-    if (idRecord.status !== 'available') {
-      const status = idRecord.status === 'revoked' ? 403 : 409
-      throw new AppError(status, ID_UNAVAILABLE_MESSAGES[idRecord.status])
-    }
-    // A student ID is only valid while it belongs to an APPROVED application
-    if (idRecord.role === 'student') {
-      const application = await applicationModel.findByDrivingSchoolId(
-        idRecord.driving_school_id,
-        db,
-      )
-      if (application?.status !== 'APPROVED') {
-        throw new AppError(403, 'This Driving School ID is not valid for registration.')
-      }
-    }
+    const { idRecord, application } = await findRegistrableId(drivingSchoolId, db, { forUpdate: true })
+    const email = application.email.toLowerCase()
     if (await userModel.findByEmail(email, db)) {
-      throw new AppError(409, 'An account with this e-mail address already exists.')
+      throw new AppError(409, 'An account already uses the e-mail address on your application. Please contact the school.')
     }
 
     const newUserId = await userModel.create(
       {
         // Use the ID exactly as the school issued it
         drivingSchoolId: idRecord.driving_school_id,
-        name,
+        name: application.full_name,
         email,
         passwordHash,
         role: idRecord.role,

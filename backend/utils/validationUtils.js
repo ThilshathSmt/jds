@@ -80,24 +80,34 @@ const throwIfInvalid = (errors) => {
 // Each validator reads only the fields it expects from the request body and returns clean
 // values. Anything else the client sends (for example "role") is ignored.
 
+// The Driving School ID typed on the account registration page
+const getDrivingSchoolIdError = (drivingSchoolId) => {
+  if (!drivingSchoolId) return 'Driving School ID is required.'
+  if (!DRIVING_SCHOOL_ID_PATTERN.test(drivingSchoolId)) return 'Driving School ID is not valid.'
+  return ''
+}
+
+// "Verify ID" on the account registration page
+export const validateDrivingSchoolIdInput = (body = {}) => {
+  const drivingSchoolId = asTrimmedString(body.drivingSchoolId)
+  const error = getDrivingSchoolIdError(drivingSchoolId)
+  if (error) throw new AppError(400, error, { drivingSchoolId: error })
+  return { drivingSchoolId }
+}
+
+// Account registration: only the Driving School ID and the password are read. The name and
+// e-mail come from the approved application on the server; any sent by the client are
+// ignored.
 export const validateRegistrationInput = (body = {}) => {
   const input = {
     drivingSchoolId: asTrimmedString(body.drivingSchoolId),
-    name: asTrimmedString(body.name),
-    email: asTrimmedString(body.email).toLowerCase(),
     password: asString(body.password),
   }
   const confirmPassword = asString(body.confirmPassword)
   const errors = {}
 
-  if (!input.drivingSchoolId) errors.drivingSchoolId = 'Driving School ID is required.'
-  else if (!DRIVING_SCHOOL_ID_PATTERN.test(input.drivingSchoolId)) {
-    errors.drivingSchoolId = 'Driving School ID is not valid.'
-  }
-  if (!input.name) errors.name = 'Name is required.'
-  else if (input.name.length > 100) errors.name = 'Name must be 100 characters or fewer.'
-  if (!input.email) errors.email = 'E-mail address is required.'
-  else if (!isValidEmail(input.email)) errors.email = 'Enter a valid email address.'
+  const idError = getDrivingSchoolIdError(input.drivingSchoolId)
+  if (idError) errors.drivingSchoolId = idError
   const passwordError = getPasswordError(input.password)
   if (passwordError) errors.password = passwordError
   if (!confirmPassword) errors.confirmPassword = 'Please confirm your password.'
@@ -221,7 +231,9 @@ export const validateApplicationInput = (body = {}) => {
   if (!MOBILE_PATTERN.test(input.mobileNumber)) {
     errors.mobile = 'Mobile number must contain exactly 10 digits.'
   }
-  if (input.email && !isValidEmail(input.email)) errors.email = 'Enter a valid email address.'
+  if (!input.email) errors.email = 'Email address is required.'
+  else if (!isValidEmail(input.email)) errors.email = 'Enter a valid email address.'
+  else if (input.email.length > 150) errors.email = 'Email address must be 150 characters or fewer.'
   if (!NIC_PATTERN.test(input.nic)) errors.nic = 'Enter a valid NIC: 9 digits + V or 12 digits.'
   if (!input.address) errors.address = 'Address is required.'
   else if (input.address.length > 500) errors.address = 'Address must be 500 characters or fewer.'

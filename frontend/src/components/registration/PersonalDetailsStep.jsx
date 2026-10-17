@@ -55,8 +55,8 @@ function PersonalDetailsStep({ formData, errors, onChange }) {
           />
         </FormField>
 
-        <FormField id="email" label="Email Address" error={errorFor('email')} hint="Optional">
-          <input type="email" autoComplete="email" {...field('email')} />
+        <FormField id="email" label="Email Address" required error={errorFor('email')}>
+          <input type="email" autoComplete="email" maxLength={150} required {...field('email')} />
         </FormField>
 
         <FormField

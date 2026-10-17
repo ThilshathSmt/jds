@@ -3,7 +3,11 @@
 import * as authService from '../services/authService.js'
 import { sendSuccess } from '../utils/responseUtils.js'
 import { SESSION_COOKIE, clearSessionCookieOptions, createSession } from '../utils/sessionUtils.js'
-import { validateLoginInput, validateRegistrationInput } from '../utils/validationUtils.js'
+import {
+  validateDrivingSchoolIdInput,
+  validateLoginInput,
+  validateRegistrationInput,
+} from '../utils/validationUtils.js'
 
 export const register = async (req, res) => {
   const user = await authService.register(validateRegistrationInput(req.body))
@@ -12,6 +16,13 @@ export const register = async (req, res) => {
     message: 'Registration successful. You can now log in.',
     data: { user },
   })
+}
+
+// Public: POST /api/auth/register/verify { drivingSchoolId }: the approved application's
+// name and e-mail, shown read-only on the registration page
+export const verifyRegistrationId = async (req, res) => {
+  const details = await authService.verifyRegistrationId(validateDrivingSchoolIdInput(req.body))
+  sendSuccess(res, { message: 'Driving School ID verified.', data: { details } })
 }
 
 export const login = async (req, res) => {
