@@ -36,7 +36,8 @@ export const validateStep1 = ({ fullName, mobile, email, nic, address }) => {
   const errors = {}
   if (!fullName.trim()) errors.fullName = 'Full name is required.'
   if (!isValidMobile(mobile)) errors.mobile = 'Mobile number must contain exactly 10 digits.'
-  if (!isValidEmail(email.trim())) errors.email = 'Enter a valid email address.'
+  if (!email.trim()) errors.email = 'Email address is required.'
+  else if (!isValidEmail(email.trim())) errors.email = 'Enter a valid email address.'
   if (!isValidNic(nic)) errors.nic = 'Enter a valid NIC: 9 digits + V or 12 digits.'
   if (!address.trim()) errors.address = 'Address is required.'
   return errors

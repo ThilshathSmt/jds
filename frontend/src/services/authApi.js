@@ -25,12 +25,22 @@ export const login = async ({ schoolId, password, keepSignedIn }) => {
   return user
 }
 
-// No role is sent: the backend takes it from the provisioned Driving School ID
-export const register = async ({ schoolId, name, email, password, confirmPassword }) => {
+// "Verify ID": resolves with { drivingSchoolId, name, email } of the approved application.
+// Rejects with code ALREADY_REGISTERED when the ID already has an account.
+export const verifyDrivingSchoolId = async (schoolId) => {
+  const { details } = await withFormFieldErrors(
+    apiRequest('/api/auth/register/verify', { method: 'POST', body: { drivingSchoolId: schoolId } }),
+  )
+  return details
+}
+
+// Only the ID and the password are sent: the backend takes the name and e-mail from the
+// approved application and the role from the issued Driving School ID
+export const register = async ({ schoolId, password, confirmPassword }) => {
   const { user } = await withFormFieldErrors(
     apiRequest('/api/auth/register', {
       method: 'POST',
-      body: { drivingSchoolId: schoolId, name, email, password, confirmPassword },
+      body: { drivingSchoolId: schoolId, password, confirmPassword },
     }),
   )
   return user

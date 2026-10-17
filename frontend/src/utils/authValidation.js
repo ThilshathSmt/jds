@@ -13,18 +13,18 @@ export const validateLogin = ({ schoolId, password }) => {
   return errors
 }
 
-export const validateRegister = ({ schoolId, name, email, password, confirmPassword }) => {
+// The account registration form, once the Driving School ID has been verified (the name
+// and e-mail are the application's and are not typed). `captcha` is the ticked box.
+export const validateRegister = ({ schoolId, password, confirmPassword, captcha }) => {
   const errors = {}
   if (!schoolId.trim()) errors.schoolId = 'Driving School Id is required.'
-  if (!name.trim()) errors.name = 'Your name is required.'
-  if (!email.trim()) errors.email = 'E-mail address is required.'
-  else if (!isValidEmail(email.trim())) errors.email = 'Enter a valid email address.'
   if (!password) errors.password = 'Password is required.'
   else if (password.length < PASSWORD_MIN_LENGTH) {
     errors.password = `Password must be at least ${PASSWORD_MIN_LENGTH} characters.`
   }
   if (!confirmPassword) errors.confirmPassword = 'Please confirm your password.'
   else if (confirmPassword !== password) errors.confirmPassword = 'Passwords do not match.'
+  if (!captcha) errors.captcha = 'Please confirm that you are not a robot.'
   return errors
 }
 
