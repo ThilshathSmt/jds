@@ -12,7 +12,9 @@ const ADMIN_PATH = '/api/admin/exam-date-requests'
 
 // ---- Student
 
-// Resolves with { requests, canSubmit }: the student's own requests, newest first
+// Resolves with { requests, canSubmit, summary, examWeekdays }: the student's own requests,
+// newest first, and the days of the week (1 = Monday ... 5 = Friday) the school currently
+// offers for the examination
 export const listMyExamDateRequests = () => apiRequest(STUDENT_PATH)
 
 export const getMyExamDateRequest = async (id) => {
@@ -20,7 +22,8 @@ export const getMyExamDateRequest = async (id) => {
   return request
 }
 
-// `preferredDates` are one to three future Tuesdays, in the order of preference.
+// `preferredDates` are one to three future dates on the offered weekdays, in the order of
+// preference.
 // Rejects with status 409 when a request is already awaiting review.
 export const submitExamDateRequest = async ({ medicalReportSubmitted, preferredDates }) => {
   const { request } = await apiRequest(STUDENT_PATH, {
@@ -62,3 +65,10 @@ export const rejectExamDateRequest = async (id, { reason, otherReason }) => {
   })
   return request
 }
+
+// Driving Exam page: the weekdays students may request. Resolves with { weekdays, updatedAt }.
+export const getExamWeekdays = () => apiRequest('/api/admin/exam-weekdays')
+
+// `weekdays` is one or more of 1 (Monday) ... 5 (Friday). Resolves with { weekdays, updatedAt }.
+export const updateExamWeekdays = (weekdays) =>
+  apiRequest('/api/admin/exam-weekdays', { method: 'PUT', body: { weekdays } })

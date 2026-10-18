@@ -94,6 +94,11 @@ INSERT IGNORE INTO driving_school_packages (id, name, price, sort_order) VALUES
 --     with a registration (1-100). Packages up to LKR 10,000 are always paid in full.
 --   exam_reattempt_fee: LKR owed after a first or second failed examination attempt.
 --   practical_reattempt_fee: LKR owed after a first or second failed practical driving test.
+--   exam_allowed_weekdays: the weekdays students may choose for the physical driving licence
+--     examination ("Driving Exam" page), one bit per day numbered as JavaScript's getUTCDay():
+--     bit 1 = Monday (2), bit 2 = Tuesday (4) ... bit 5 = Friday (32). Saturday and Sunday
+--     are never allowed. Starts as Tuesday only (4). Checked when a request is submitted:
+--     changing it never alters a request or an approved date already saved.
 -- The value in force is copied wherever it is used (the application's minimum payment, the
 -- failed attempt's fee), so changing a setting only affects what comes after.
 -- INSERT IGNORE adds the starting values once and never overwrites an admin's change.
@@ -109,7 +114,8 @@ CREATE TABLE IF NOT EXISTS system_settings (
 INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES
   ('registration_advance_payment_percent', 40),
   ('exam_reattempt_fee', 2000),
-  ('practical_reattempt_fee', 3000);
+  ('practical_reattempt_fee', 3000),
+  ('exam_allowed_weekdays', 4);
 
 -- Applications submitted through the public "Apply Now" form.
 -- Submitting an application never creates a login account. When an admin approves it,

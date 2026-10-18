@@ -74,3 +74,14 @@ export const saveSetting = async (key, value, updatedBy, db = pool) => {
     [key, value, updatedBy],
   )
 }
+
+// { value, updatedAt } of one setting, or null when it is missing. `lock` is 'update' or
+// 'share', as for findPackageById.
+export const findSetting = async (key, db = pool, { lock } = {}) => {
+  const suffix = lock === 'update' ? ' FOR UPDATE' : lock === 'share' ? ' LOCK IN SHARE MODE' : ''
+  const [rows] = await db.execute(
+    `SELECT setting_value, updated_at FROM system_settings WHERE setting_key = ?${suffix}`,
+    [key],
+  )
+  return rows[0] ? { value: Number(rows[0].setting_value), updatedAt: rows[0].updated_at } : null
+}

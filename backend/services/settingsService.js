@@ -11,6 +11,7 @@
 // attempt keeps its fee), so a change here only applies to what comes after it.
 
 import pool, { withTransaction } from '../config/database.js'
+import { examWeekdaysToMask, maskToExamWeekdays } from '../config/licenceExam.js'
 import { FULL_PAYMENT_THRESHOLD, getMinimumPayment } from '../config/packages.js'
 import * as settingsModel from '../models/settingsModel.js'
 import AppError from '../utils/AppError.js'
@@ -151,4 +152,26 @@ export const updateSettings = async (input, adminId) => {
     }
   })
   return getAdminSettings()
+}
+
+// ---- Driving Exam: the weekdays students may choose for the physical examination
+
+export const EXAM_WEEKDAYS_KEY = 'exam_allowed_weekdays'
+
+// { weekdays: [1-5, ascending], updatedAt }. A missing row (database set up before the
+// setting existed and not set up again) means the default, Tuesdays only.
+// `lock: 'share'` makes a simultaneous admin change wait until the caller's transaction ends.
+export const getExamWeekdays = async (db = pool, { lock } = {}) => {
+  const row = await settingsModel.findSetting(EXAM_WEEKDAYS_KEY, db, { lock })
+  return { weekdays: maskToExamWeekdays(row?.value ?? 0), updatedAt: row?.updatedAt ?? null }
+}
+
+// `weekdays` is already validated (1-5 different days from Monday to Friday). One row,
+// inserted the first time and updated after that. Applies to requests submitted from now
+// on: saved requests and approved dates are never changed by it.
+export const updateExamWeekdays = async (weekdays, adminId) => {
+  await withTransaction(async (db) => {
+    await settingsModel.saveSetting(EXAM_WEEKDAYS_KEY, examWeekdaysToMask(weekdays), adminId, db)
+  })
+  return getExamWeekdays()
 }

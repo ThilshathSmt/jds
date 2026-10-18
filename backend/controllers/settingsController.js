@@ -2,7 +2,12 @@
 
 import * as settingsService from '../services/settingsService.js'
 import { sendSuccess } from '../utils/responseUtils.js'
-import { parseId, validatePackageInput, validateSettingsInput } from '../utils/validationUtils.js'
+import {
+  parseId,
+  validateExamWeekdaysInput,
+  validatePackageInput,
+  validateSettingsInput,
+} from '../utils/validationUtils.js'
 
 // Public: GET /api/registration-applications/options
 // The active packages and the advance payment rule, for the Apply Now and reapplication forms
@@ -37,4 +42,21 @@ export const updatePackage = async (req, res) => {
     req.user.id,
   )
   sendSuccess(res, { message: 'Package saved. Existing applications keep the price they were submitted with.', data: { package: updated } })
+}
+
+// Admin: GET /api/admin/exam-weekdays
+// The days of the week students may choose for the physical driving licence examination
+export const getExamWeekdays = async (req, res) => {
+  const data = await settingsService.getExamWeekdays()
+  sendSuccess(res, { message: 'Driving exam days', data })
+}
+
+// Admin: PUT /api/admin/exam-weekdays { weekdays: [1-5] }
+export const updateExamWeekdays = async (req, res) => {
+  const { weekdays } = validateExamWeekdaysInput(req.body)
+  const data = await settingsService.updateExamWeekdays(weekdays, req.user.id)
+  sendSuccess(res, {
+    message: 'Driving exam days saved. They apply to new exam date requests; existing requests and approved dates are not changed.',
+    data,
+  })
 }

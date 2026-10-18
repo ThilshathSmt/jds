@@ -14,6 +14,7 @@ import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminExamDateRequestDetails from './pages/admin/ExamDateRequestDetails'
 import AdminNotifications from './pages/admin/Notifications'
 import AdminReattemptRequestDetails from './pages/admin/ReattemptRequestDetails'
+import AdminDrivingExam from './pages/admin/DrivingExam'
 import AdminFeedbacks from './pages/admin/Feedbacks'
 import AdminLessonDetails from './pages/admin/LessonDetails'
 import AdminLessons from './pages/admin/Lessons'
@@ -64,6 +65,7 @@ function App() {
           <Route path="registration-forms" element={<RegistrationForms />} />
           <Route path="registration-forms/:applicationId" element={<RegistrationFormDetails />} />
           <Route path="notifications" element={<AdminNotifications />} />
+          <Route path="driving-exam" element={<AdminDrivingExam />} />
           <Route path="packages-settings" element={<PackagesSettings />} />
           <Route path="lessons" element={<AdminLessons />} />
           <Route path="lessons/:cycleId" element={<AdminLessonDetails />} />

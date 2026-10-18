@@ -1,8 +1,12 @@
-import { EXAM_RESULTS } from '../config/licenceExam.js'
+import {
+  EXAM_RESULTS,
+  SELECTABLE_EXAM_WEEKDAYS,
+  formatExamWeekdays,
+} from '../config/licenceExam.js'
 import { isLessonTimeSlot } from '../config/practical.js'
 import { PAYMENT_METHODS } from '../config/packages.js'
 import AppError from './AppError.js'
-import { addDays, getSchoolDate, isTuesday, isValidDate } from './dateUtils.js'
+import { addDays, getSchoolDate, getWeekday, isValidDate, isWeekend } from './dateUtils.js'
 
 export const ROLES = ['admin', 'student', 'instructor']
 // Roles an admin may issue an ID for directly. Student IDs are issued only by approving
@@ -261,7 +265,9 @@ export const validateApplicationStatusFilter = (value) => {
 
 // A request for a physical exam date. Only these two fields are read: a student id, name,
 // status or approved date sent by the client is ignored. The dates must be one to three
-// different Tuesdays after today's date in Sri Lanka; they are returned in the order sent.
+// different weekdays (Monday to Friday) after today's date in Sri Lanka; they are returned in
+// the order sent. Which weekdays the school currently offers is an admin setting, checked
+// against the saved setting by validateExamDatesForWeekdays when the request is saved.
 export const validateExamDateRequestInput = (body = {}, now = new Date()) => {
   // Only a real `true` counts: the student has to confirm it, nothing is assumed
   if (body.medicalReportSubmitted !== true) {
@@ -274,15 +280,15 @@ export const validateExamDateRequestInput = (body = {}, now = new Date()) => {
   const today = getSchoolDate(now)
   let error = ''
   if (!Array.isArray(dates) || dates.length === 0) {
-    error = 'Select at least one Tuesday.'
+    error = 'Select at least one date.'
   } else if (dates.length > MAX_PREFERRED_DATES) {
     error = `You can select up to ${MAX_PREFERRED_DATES} dates.`
   } else if (!dates.every(isValidDate)) {
     error = 'One of the selected dates is not a valid date.'
   } else if (new Set(dates).size !== dates.length) {
     error = 'Select different dates: the same date was selected twice.'
-  } else if (!dates.every(isTuesday)) {
-    error = 'Only Tuesdays can be selected.'
+  } else if (dates.some(isWeekend)) {
+    error = 'Examinations are not held on Saturdays or Sundays.'
   } else if (dates.some((date) => date <= today)) {
     error = 'Only future dates can be selected. Today and past dates are not available.'
   } else if (dates.some((date) => date > addDays(today, PREFERRED_DATE_HORIZON_DAYS))) {
@@ -291,6 +297,28 @@ export const validateExamDateRequestInput = (body = {}, now = new Date()) => {
   if (error) throw new AppError(400, error, { preferredDates: error })
 
   return { medicalReportSubmitted: true, preferredDates: [...dates] }
+}
+
+// Every date must fall on one of `weekdays`, the examination days the admin offers now
+// (0 = Sunday ... 6 = Saturday). `dates` were already checked by validateExamDateRequestInput.
+export const validateExamDatesForWeekdays = (dates, weekdays) => {
+  if (dates.every((date) => weekdays.includes(getWeekday(date)))) return
+  const error = `Examinations are currently held on ${formatExamWeekdays(weekdays)} only. Please choose dates on those days.`
+  throw new AppError(400, error, { preferredDates: error })
+}
+
+// Driving Exam page: { weekdays: [1-5] }, the examination days to offer. At least one, each
+// from Monday (1) to Friday (5); returned sorted without repeats.
+export const validateExamWeekdaysInput = (body = {}) => {
+  const { weekdays } = body
+  let error = ''
+  if (!Array.isArray(weekdays) || weekdays.length === 0) {
+    error = 'Select at least one examination day.'
+  } else if (!weekdays.every((weekday) => Number.isInteger(weekday) && SELECTABLE_EXAM_WEEKDAYS.includes(weekday))) {
+    error = 'Examination days must be from Monday to Friday. Saturday and Sunday cannot be selected.'
+  }
+  if (error) throw new AppError(400, error, { weekdays: error })
+  return { weekdays: [...new Set(weekdays)].sort((a, b) => a - b) }
 }
 
 // Optional ?status= filter for the admin list. Returns undefined when no filter is given.

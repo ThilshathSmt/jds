@@ -36,6 +36,10 @@ router.put('/settings', settingsController.updateSettings)
 router.post('/packages', settingsController.createPackage)
 router.put('/packages/:id', settingsController.updatePackage)
 
+// Driving Exam: the weekdays (Monday to Friday) students may request an examination date on
+router.get('/exam-weekdays', settingsController.getExamWeekdays)
+router.put('/exam-weekdays', settingsController.updateExamWeekdays)
+
 // Lessons: practical training after the driving school exam, and the practical test
 router.get('/practical/cycles', practicalController.listCycles)
 router.get('/practical/instructors', practicalController.listInstructors)

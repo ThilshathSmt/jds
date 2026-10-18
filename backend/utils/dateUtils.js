@@ -6,7 +6,6 @@ export const SCHOOL_TIME_ZONE = 'Asia/Colombo'
 
 const ISO_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/
 const DAY_MS = 24 * 60 * 60 * 1000
-const TUESDAY = 2
 
 const localDateFormat = new Intl.DateTimeFormat('en-GB', {
   timeZone: SCHOOL_TIME_ZONE,
@@ -60,13 +59,13 @@ const toUtc = (isoDate) => {
 
 export const isValidDate = (isoDate) => toUtc(isoDate) !== null
 
-export const isTuesday = (isoDate) => toUtc(isoDate)?.getUTCDay() === TUESDAY
-
 export const addDays = (isoDate, days) =>
   new Date(toUtc(isoDate).getTime() + days * DAY_MS).toISOString().slice(0, 10)
 
 // 0 = Sunday ... 6 = Saturday
 export const getWeekday = (isoDate) => toUtc(isoDate).getUTCDay()
+
+export const isWeekend = (isoDate) => [0, 6].includes(getWeekday(isoDate))
 
 // `days` calendar days after `isoDate`; a Saturday or Sunday becomes the following Monday.
 // Pure date arithmetic on 'YYYY-MM-DD' strings, so no time zone can shift the result.

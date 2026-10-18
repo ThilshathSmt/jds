@@ -10,6 +10,7 @@ import {
   FaChalkboardUser,
   FaClipboardList,
   FaGaugeHigh,
+  FaRoad,
   FaSliders,
   FaUserGraduate,
   FaUserShield,
@@ -34,6 +35,7 @@ export const adminPanel = {
     { label: 'Lessons', to: '/admin-dashboard/lessons', icon: FaCarSide },
     { label: 'Feedbacks', to: '/admin-dashboard/feedbacks', icon: FaCommentDots },
     { label: 'Notifications', to: '/admin-dashboard/notifications', icon: FaBell },
+    { label: 'Driving Exam', to: '/admin-dashboard/driving-exam', icon: FaRoad },
     {
       label: 'Packages & Exam Penalties',
       to: '/admin-dashboard/packages-settings',

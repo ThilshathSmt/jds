@@ -18,13 +18,14 @@ import DashboardSection from '../../components/dashboard/DashboardSection'
 import DashboardWelcome from '../../components/dashboard/DashboardWelcome'
 import ExamDateRequestSummary from '../../components/examDate/ExamDateRequestSummary'
 import { NextActionLink } from '../../components/licenceExam/AttemptSummaryCard'
-import TuesdayCalendar from '../../components/examDate/TuesdayCalendar'
+import ExamDateCalendar from '../../components/examDate/ExamDateCalendar'
 import { useNotifications } from '../../context/useNotifications'
 import { listMyExamDateRequests, submitExamDateRequest } from '../../services/examDateRequestApi'
 import {
   MAX_PREFERRED_DATES,
   MEDICAL_REPORT_REQUIRED_MESSAGE,
   formatExamDate,
+  formatExamWeekdays,
   getSchoolDate,
   isSelectableDate,
 } from '../../utils/examDateUtils'
@@ -37,10 +38,12 @@ const medicalOptions = [
   { value: 'no', label: 'No' },
 ]
 
-// The request form: the medical report question first, then up to three future Tuesdays.
+// The request form: the medical report question first, then up to three future dates on
+// `weekdays`, the examination days the admin currently offers (1 = Monday ... 5 = Friday).
 // The backend checks all of it again; `onSubmitted(request)` receives the saved request
-// and `onConflict()` is called when the backend says a request is already pending.
-function RequestForm({ onSubmitted, onConflict }) {
+// and `onConflict()` reloads the page's data when the backend says a request is already
+// pending or the offered examination days have changed since the page was loaded.
+function RequestForm({ weekdays, onSubmitted, onConflict }) {
   // 'yes' | 'no' | '' (not answered yet)
   const [medical, setMedical] = useState('')
   const [dates, setDates] = useState([])
@@ -63,7 +66,7 @@ function RequestForm({ onSubmitted, onConflict }) {
   const askToSubmit = () => {
     // The page may have been open past midnight: a chosen date may no longer be in the future
     const now = getSchoolDate()
-    const stillValid = dates.filter((date) => isSelectableDate(date, now))
+    const stillValid = dates.filter((date) => isSelectableDate(date, now, weekdays))
     if (stillValid.length !== dates.length) {
       setToday(now)
       setDates(stillValid)
@@ -71,7 +74,7 @@ function RequestForm({ onSubmitted, onConflict }) {
       return
     }
     if (dates.length === 0) {
-      setError('Select at least one Tuesday.')
+      setError('Select at least one date.')
       return
     }
     setError('')
@@ -85,8 +88,10 @@ function RequestForm({ onSubmitted, onConflict }) {
     } catch (submitError) {
       setConfirming(false)
       setError(submitError.message)
-      // 409: a request is already awaiting review (for example sent from another tab)
-      if (submitError.status === 409) onConflict()
+      // 409: a request is already awaiting review (for example sent from another tab).
+      // A date error: the admin may have changed the examination days; reloading them
+      // shows the current calendar (dates no longer offered are removed before submitting).
+      if (submitError.status === 409 || submitError.fieldErrors?.preferredDates) onConflict()
     } finally {
       setBusy(false)
     }
@@ -138,14 +143,15 @@ function RequestForm({ onSubmitted, onConflict }) {
         <DashboardSection title="Preferred Exam Dates" icon={FaCalendarDays}>
           <p className="flex items-start gap-3 rounded-lg bg-gray-50 px-4 py-3 text-sm text-gray-700">
             <FaCircleInfo aria-hidden="true" className="mt-0.5 shrink-0 text-brand" />
-            Examinations are held on Tuesdays. Select up to {MAX_PREFERRED_DATES} Tuesdays you are
-            available on, in your order of preference. These are preferences: the school will
-            confirm one date.
+            Examinations are held on {formatExamWeekdays(weekdays)}. Select up to{' '}
+            {MAX_PREFERRED_DATES} dates you are available on, in your order of preference. These
+            are preferences: the school will confirm one date.
           </p>
 
           <div className="mt-6 grid gap-8 lg:grid-cols-2">
-            <TuesdayCalendar
+            <ExamDateCalendar
               today={today}
+              weekdays={weekdays}
               selected={dates}
               max={MAX_PREFERRED_DATES}
               onToggle={toggleDate}
@@ -158,7 +164,7 @@ function RequestForm({ onSubmitted, onConflict }) {
               </h3>
               {dates.length === 0 ? (
                 <p className="mt-3 rounded-lg border border-dashed border-gray-300 px-4 py-6 text-center text-sm text-gray-600">
-                  No dates selected yet. Choose a Tuesday on the calendar.
+                  No dates selected yet. Choose an available date on the calendar.
                 </p>
               ) : (
                 <ol className="mt-3 flex flex-col gap-2" aria-label="Selected dates">
@@ -275,7 +281,7 @@ function ExamDateRequest() {
   const banner = (
     <DashboardWelcome
       title="Request Driving Licence Exam Date"
-      message="Choose the Tuesdays you are available for your physical driving licence examination."
+      message="Choose the dates you are available for your physical driving licence examination."
       icon={FaCalendarCheck}
     />
   )
@@ -345,6 +351,7 @@ function ExamDateRequest() {
             </span>
           </p>
           <RequestForm
+            weekdays={data.examWeekdays}
             onSubmitted={(request) => {
               handleSubmitted(request)
               refreshNotifications()
