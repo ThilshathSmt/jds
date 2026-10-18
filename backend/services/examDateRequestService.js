@@ -7,7 +7,8 @@
 //
 // What the server alone decides, whatever a browser sends:
 //   - who the student is (the signed-in account: id, name and Driving School ID)
-//   - which dates are acceptable (future Tuesdays in Sri Lanka, see validationUtils.js)
+//   - which dates are acceptable (future weekdays in Sri Lanka that fall on one of the
+//     examination days the admin offers when the request is saved, see validationUtils.js)
 //   - that the approved date is one of the dates the student asked for
 //   - that a request is decided once: a decided request never changes again
 //   - whether the student may request a date at all (attempts left, not already passed)
@@ -24,7 +25,7 @@ import * as licenceExamModel from '../models/licenceExamModel.js'
 import * as userModel from '../models/userModel.js'
 import AppError from '../utils/AppError.js'
 import { formatLongDate, getSchoolDate } from '../utils/dateUtils.js'
-import { REJECTION_REASONS } from '../utils/validationUtils.js'
+import { REJECTION_REASONS, validateExamDatesForWeekdays } from '../utils/validationUtils.js'
 import {
   assertCanRequestDate,
   exhaustsCycle,
@@ -33,7 +34,7 @@ import {
   requiresReattemptFee,
 } from './licenceExamService.js'
 import { startFirstCycle } from './practicalService.js'
-import { getSettings } from './settingsService.js'
+import { getExamWeekdays, getSettings } from './settingsService.js'
 import {
   NOTIFICATION_TYPES,
   markRequestNotificationsRead,
@@ -103,11 +104,15 @@ const toRequests = async (rows, db) => {
 // ---- Student. `student` is req.user: the signed-in account, never anything from the request.
 
 // The student's own requests, newest first, and whether a new one may be submitted now
-// (`summary` says why not: see licenceExamService.getSummary)
+// (`summary` says why not: see licenceExamService.getSummary), and `examWeekdays`: the days
+// of the week (1 = Monday ... 5 = Friday) the request form's calendar offers now
 export const listOwn = async (student) => {
-  const requests = await toRequests(await examDateRequestModel.findByUser(student.id))
-  const { summary } = await getSummary(student.id)
-  return { requests, canSubmit: summary.canRequestDate, summary }
+  const [rows, { summary }, { weekdays }] = await Promise.all([
+    examDateRequestModel.findByUser(student.id),
+    getSummary(student.id),
+    getExamWeekdays(),
+  ])
+  return { requests: await toRequests(rows), canSubmit: summary.canRequestDate, summary, examWeekdays: weekdays }
 }
 
 export const getOwn = async (id, student) => {
@@ -117,7 +122,9 @@ export const getOwn = async (id, student) => {
 }
 
 // Saves the request and tells the admins, in one transaction. `input` has already been
-// validated: the medical report is confirmed and the dates are 1-3 future Tuesdays.
+// validated: the medical report is confirmed and the dates are 1-3 future weekdays. Here
+// they are checked against the examination days saved by the admin, read in the same
+// transaction (a simultaneous change of them waits until the request is saved).
 // Refused when the student has passed, has a request or a result outstanding, or has not
 // yet had the reattempt payment for their last failure approved.
 export const submit = async (student, { preferredDates }) => {
@@ -126,6 +133,8 @@ export const submit = async (student, { preferredDates }) => {
   try {
     const requestId = await withTransaction(async (db) => {
       await assertCanRequestDate(student.id, db)
+      const { weekdays } = await getExamWeekdays(db, { lock: 'share' })
+      validateExamDatesForWeekdays(preferredDates, weekdays)
       const newId = await examDateRequestModel.create(
         {
           userId: student.id,

@@ -3,10 +3,32 @@
 // zone. The backend applies the same rules again when a request is submitted.
 
 const SCHOOL_TIME_ZONE = 'Asia/Colombo'
-const TUESDAY = 2
 const DAY_MS = 24 * 60 * 60 * 1000
 
 export const MAX_PREFERRED_DATES = 3
+
+// The days of the week, Monday first, numbered as getUTCDay() does (0 = Sunday). Admins
+// choose on the Driving Exam page which of the `selectable` ones students may request;
+// Saturday and Sunday are never examination days.
+export const EXAM_WEEKDAYS = [
+  { value: 1, name: 'Monday', selectable: true },
+  { value: 2, name: 'Tuesday', selectable: true },
+  { value: 3, name: 'Wednesday', selectable: true },
+  { value: 4, name: 'Thursday', selectable: true },
+  { value: 5, name: 'Friday', selectable: true },
+  { value: 6, name: 'Saturday', selectable: false },
+  { value: 0, name: 'Sunday', selectable: false },
+]
+const WEEKEND = [0, 6]
+const weekdayName = (value) => EXAM_WEEKDAYS.find((weekday) => weekday.value === value)?.name ?? ''
+
+// [2, 5] -> 'Tuesdays and Fridays'
+export const formatExamWeekdays = (weekdays, conjunction = 'and') => {
+  const names = [...weekdays]
+    .sort((a, b) => a - b)
+    .map((value) => `${weekdayName(value)}s`)
+  return names.length <= 1 ? names.join('') : `${names.slice(0, -1).join(', ')} ${conjunction} ${names.at(-1)}`
+}
 // How many months ahead the calendar goes (the backend accepts dates up to a year ahead)
 export const CALENDAR_MONTHS_AHEAD = 11
 
@@ -45,10 +67,15 @@ export const getSchoolDate = (now = new Date()) => {
   return `${parts.year}-${parts.month}-${parts.day}`
 }
 
-export const isTuesday = (isoDate) => toUtc(isoDate).getUTCDay() === TUESDAY
+// 0 = Sunday ... 6 = Saturday
+export const getWeekday = (isoDate) => toUtc(isoDate).getUTCDay()
 
-// A date a student may ask for: a Tuesday after today
-export const isSelectableDate = (isoDate, today) => isTuesday(isoDate) && isoDate > today
+// A date a student may ask for: after today, on one of `weekdays` (the examination days the
+// admin offers), and never on a Saturday or Sunday
+export const isSelectableDate = (isoDate, today, weekdays) => {
+  const weekday = getWeekday(isoDate)
+  return isoDate > today && !WEEKEND.includes(weekday) && weekdays.includes(weekday)
+}
 
 // '2026-10' for the month of a date
 export const getMonthKey = (isoDate) => isoDate.slice(0, 7)
@@ -75,13 +102,15 @@ export const getMonthWeeks = (monthKey) => {
   return Array.from({ length: cells.length / 7 }, (unused, week) => cells.slice(week * 7, week * 7 + 7))
 }
 
-// The first Tuesday after `today`: where the calendar opens
-export const getNextTuesday = (today) => {
-  let date = toUtc(today)
-  do {
-    date = new Date(date.getTime() + DAY_MS)
-  } while (date.getUTCDay() !== TUESDAY)
-  return date.toISOString().slice(0, 10)
+// The first date after `today` a student may ask for: where the calendar opens. The day
+// after `today` when no weekday is offered.
+export const getNextExamDate = (today, weekdays) => {
+  const start = toUtc(today).getTime()
+  for (let days = 1; days <= 7; days += 1) {
+    const date = new Date(start + days * DAY_MS).toISOString().slice(0, 10)
+    if (isSelectableDate(date, today, weekdays)) return date
+  }
+  return new Date(start + DAY_MS).toISOString().slice(0, 10)
 }
 
 const format = (options) => {
