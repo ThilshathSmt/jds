@@ -11,6 +11,7 @@ import {
   FaClipboardCheck,
   FaFileSignature,
   FaGaugeHigh,
+  FaGear,
   FaMoneyBillWave,
   FaUserGraduate,
 } from 'react-icons/fa6'
@@ -28,6 +29,7 @@ export const studentPanel = {
     { label: 'Exams', to: '/student-dashboard/exams', icon: FaFileSignature },
     { label: 'Lessons', to: '/student-dashboard/lessons', icon: FaCarSide },
     { label: 'Notifications', to: '/student-dashboard/notifications', icon: FaBell },
+    { label: 'Settings', to: '/student-dashboard/settings', icon: FaGear },
   ],
 }
 

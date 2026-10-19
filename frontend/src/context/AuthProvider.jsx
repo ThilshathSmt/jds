@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AuthContext } from './useAuth'
 import { onAccountLocked } from '../services/apiClient'
 import * as authApi from '../services/authApi'
@@ -31,6 +31,12 @@ function AuthProvider({ children }) {
     return () => onAccountLocked(null)
   }, [])
 
+  // After the Settings page saved the profile: the header and sidebar show it at once
+  const updateUser = useCallback(
+    (changes) => setUser((current) => (current ? { ...current, ...changes } : current)),
+    [],
+  )
+
   const auth = useMemo(
     () => ({
       user,
@@ -41,13 +47,14 @@ function AuthProvider({ children }) {
         return signedInUser
       },
       register: authApi.register,
+      updateUser,
       logout: async () => {
         // Sign out locally even if the request fails, so the UI never stays "logged in"
         await authApi.logout().catch(() => {})
         setUser(null)
       },
     }),
-    [user, loading],
+    [user, loading, updateUser],
   )
 
   return <AuthContext value={auth}>{children}</AuthContext>

@@ -57,3 +57,26 @@ export const fetchCurrentUser = async () => {
 }
 
 export const logout = () => apiRequest('/api/auth/logout', { method: 'POST' })
+
+// ---- Password recovery and e-mail confirmation (no login needed)
+
+// Always resolves with the same generic message, whether or not the address has an account
+export const requestPasswordReset = async (email) =>
+  (await apiRequest('/api/auth/forgot-password', { method: 'POST', body: { email }, withMessage: true })).message
+
+// Resolves with { drivingSchoolId, expiresAt }; rejects with code LINK_INVALID, LINK_EXPIRED
+// or LINK_USED when the link cannot be used
+export const checkPasswordResetLink = (token) =>
+  apiRequest('/api/auth/reset-password/check', { method: 'POST', body: { token } })
+
+// Resolves with { drivingSchoolId, locked, message }
+export const resetPassword = ({ token, password, confirmPassword }) =>
+  apiRequest('/api/auth/reset-password', {
+    method: 'POST',
+    body: { token, password, confirmPassword },
+    withMessage: true,
+  })
+
+// Confirms a new e-mail address chosen in Settings. Resolves with { email, message }.
+export const verifyEmailChange = (token) =>
+  apiRequest('/api/auth/verify-email', { method: 'POST', body: { token }, withMessage: true })

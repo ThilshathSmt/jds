@@ -8,6 +8,7 @@ import {
   FaCalendarDay,
   FaClipboardCheck,
   FaGaugeHigh,
+  FaGear,
   FaUserGraduate,
   FaUserTie,
 } from 'react-icons/fa6'
@@ -23,6 +24,7 @@ export const instructorPanel = {
     { label: 'Dashboard', to: '/instructor-dashboard', icon: FaGaugeHigh, end: true },
     { label: 'Lessons', to: '/instructor-dashboard/lessons', icon: FaCarSide },
     { label: 'Feedbacks', to: '/instructor-dashboard/feedbacks', icon: FaCommentDots },
+    { label: 'Settings', to: '/instructor-dashboard/settings', icon: FaGear },
   ],
 }
 

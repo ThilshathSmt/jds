@@ -4,6 +4,7 @@ import path from 'node:path'
 import multer from 'multer'
 import env from '../config/env.js'
 import AppError from '../utils/AppError.js'
+import { PROFILE_PICTURE_MAX_BYTES, PROFILE_PICTURE_TYPES } from '../config/account.js'
 import { RECEIPT_MAX_BYTES, RECEIPT_TYPES } from '../utils/fileUtils.js'
 
 // Files are saved in `directory`, which is outside any folder served to the public
@@ -67,3 +68,17 @@ export const uploadPracticalReceipt = multer({
   fileFilter,
   limits: { fileSize: RECEIPT_MAX_BYTES, files: 1, fields: 10 },
 }).single('receipt')
+
+// Parses the Settings page's profile picture upload into req.file. Images only (the
+// content is checked again in profileService.js), kept apart from every other upload.
+export const uploadProfilePicture = multer({
+  storage: createStorage(env.profileUploadsDir),
+  fileFilter: (req, file, callback) => {
+    if (!PROFILE_PICTURE_TYPES[path.extname(file.originalname).toLowerCase()]) {
+      const message = 'Please upload a JPG, PNG or WebP image.'
+      return callback(new AppError(400, message, { picture: message }))
+    }
+    return callback(null, true)
+  },
+  limits: { fileSize: PROFILE_PICTURE_MAX_BYTES, files: 1, fields: 0 },
+}).single('picture')

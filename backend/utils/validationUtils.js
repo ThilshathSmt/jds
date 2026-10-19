@@ -6,6 +6,7 @@ import {
 import { isLessonTimeSlot } from '../config/practical.js'
 import { PAYMENT_METHODS } from '../config/packages.js'
 import AppError from './AppError.js'
+import { TOKEN_PATTERN } from './tokenUtils.js'
 import { addDays, getSchoolDate, getWeekday, isValidDate, isWeekend } from './dateUtils.js'
 
 export const ROLES = ['admin', 'student', 'instructor']
@@ -663,4 +664,77 @@ export const validateFeedbackFilters = (query = {}) => {
     throw new AppError(400, 'The "from" date must not be after the "to" date.')
   }
   return filters
+}
+
+// ---- Settings page and account recovery
+
+const NAME_MAX_LENGTH = 100
+
+// Settings > Personal Information. Only the name, the e-mail and (needed when the e-mail
+// changes) the current password are read: a Driving School ID, role, status, password hash
+// or anything else in the body is ignored, so none of them can be changed here.
+export const validateProfileInput = (body = {}) => {
+  const input = {
+    name: asTrimmedString(body.name).replace(/\s+/g, ' '),
+    email: asTrimmedString(body.email).toLowerCase(),
+    currentPassword: asString(body.currentPassword),
+  }
+  const errors = {}
+  if (!input.name) errors.name = 'Full name is required.'
+  else if (input.name.length < 2) errors.name = 'Full name must be at least 2 characters.'
+  else if (input.name.length > NAME_MAX_LENGTH) errors.name = `Full name must be ${NAME_MAX_LENGTH} characters or fewer.`
+  if (!input.email) errors.email = 'E-mail address is required.'
+  else if (!isValidEmail(input.email)) errors.email = 'Enter a valid email address.'
+  throwIfInvalid(errors)
+  return input
+}
+
+// Settings > Change Password: the current password and the new one, twice
+export const validateChangePasswordInput = (body = {}) => {
+  const input = { currentPassword: asString(body.currentPassword), newPassword: asString(body.newPassword) }
+  const confirmPassword = asString(body.confirmPassword)
+  const errors = {}
+  if (!input.currentPassword) errors.currentPassword = 'Current password is required.'
+  const passwordError = getPasswordError(input.newPassword)
+  if (passwordError) errors.newPassword = passwordError
+  else if (input.newPassword === input.currentPassword) {
+    errors.newPassword = 'The new password must be different from the current password.'
+  }
+  if (!confirmPassword) errors.confirmPassword = 'Please confirm the new password.'
+  else if (confirmPassword !== input.newPassword) errors.confirmPassword = 'Passwords do not match.'
+  throwIfInvalid(errors)
+  return input
+}
+
+// Forgot password: the e-mail address only
+export const validateForgotPasswordInput = (body = {}) => {
+  const email = asTrimmedString(body.email).toLowerCase()
+  const error = !email ? 'E-mail address is required.' : !isValidEmail(email) ? 'Enter a valid email address.' : ''
+  if (error) throw new AppError(400, error, { email: error })
+  return { email }
+}
+
+// The token from a link sent by e-mail. Anything that cannot be one gets the same answer
+// as an unknown token.
+export const INVALID_LINK_CODE = 'LINK_INVALID'
+export const validateTokenInput = (body = {}) => {
+  const token = asString(body.token)
+  if (!TOKEN_PATTERN.test(token)) {
+    throw new AppError(400, 'This link is not valid. Please request a new one.', undefined, INVALID_LINK_CODE)
+  }
+  return { token }
+}
+
+// Reset password page: the token and the new password, twice
+export const validateResetPasswordInput = (body = {}) => {
+  const { token } = validateTokenInput(body)
+  const password = asString(body.password)
+  const confirmPassword = asString(body.confirmPassword)
+  const errors = {}
+  const passwordError = getPasswordError(password)
+  if (passwordError) errors.password = passwordError
+  if (!confirmPassword) errors.confirmPassword = 'Please confirm your new password.'
+  else if (confirmPassword !== password) errors.confirmPassword = 'Passwords do not match.'
+  throwIfInvalid(errors)
+  return { token, password }
 }

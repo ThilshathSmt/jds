@@ -86,13 +86,12 @@ function LoginForm() {
       />
 
       <p className="pt-2 text-center">
-        {/* TODO: Implement forgot-password flow with backend later */}
-        <button
-          type="button"
-          className="cursor-pointer text-sm text-gray-600 underline-offset-4 transition hover:text-brand hover:underline"
+        <Link
+          to="/forgot-password"
+          className="text-sm text-gray-600 underline-offset-4 transition hover:text-brand hover:underline"
         >
           Forgot your password?
-        </button>
+        </Link>
       </p>
     </form>
   )

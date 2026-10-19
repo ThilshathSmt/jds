@@ -36,7 +36,7 @@ export const createSession = (userId, sessionVersion, keepSignedIn = false) => {
 
 export const clearSessionCookieOptions = baseCookieOptions
 
-// Returns { userId, sessionVersion } from a valid token, or null.
+// Returns { userId, sessionVersion, keepSignedIn } from a valid token, or null.
 // Tokens issued before session versions existed carry no `ver` and count as version 0.
 export const readSession = (token) => {
   if (!token) return null
@@ -45,7 +45,9 @@ export const readSession = (token) => {
     const userId = Number(payload.sub)
     const sessionVersion = payload.ver ?? 0
     if (!Number.isInteger(userId) || !Number.isInteger(sessionVersion)) return null
-    return { userId, sessionVersion }
+    // A token living longer than a plain session was issued with "keep me signed in"
+    const keepSignedIn = payload.exp - payload.iat > SESSION_SECONDS
+    return { userId, sessionVersion, keepSignedIn }
   } catch {
     return null
   }

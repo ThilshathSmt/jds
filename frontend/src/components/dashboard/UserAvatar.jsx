@@ -2,12 +2,12 @@ import { FaUser } from 'react-icons/fa6'
 
 const sizes = {
   sm: 'h-9 w-9 text-base',
+  xl: 'h-32 w-32 text-5xl',
   md: 'h-12 w-12 text-xl',
   lg: 'h-24 w-24 text-4xl sm:h-28 sm:w-28 sm:text-5xl',
 }
 
-// Generic avatar: shows `user.avatar` once real profile pictures exist, otherwise a role icon.
-// TODO: Replace the placeholder with the user's uploaded profile picture
+// Avatar: the uploaded profile picture (`user.avatar`, a URL) or else the role icon
 function UserAvatar({ user, size = 'md', className = '' }) {
   const Icon = user.icon ?? FaUser
   const shape = `shrink-0 rounded-full ring-2 ring-white/70 ${sizes[size]} ${className}`

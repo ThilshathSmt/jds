@@ -21,11 +21,37 @@ CREATE TABLE IF NOT EXISTS users (
   -- admin when the account is created and changeable later. NULL for students and admins,
   -- and for instructors created before it existed until an admin assigns one.
   responsibility ENUM('VAN', 'MOTOR_BIKE', 'THREE_WHEELER', 'BUS', 'TRACTOR') NULL,
+  -- Stored file name of the profile picture the user uploaded on the Settings page (in
+  -- uploads/profile-pictures, never served publicly), or NULL for the default icon.
+  profile_picture VARCHAR(100) NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uq_users_driving_school_id (driving_school_id),
   UNIQUE KEY uq_users_email (email),
   KEY idx_users_role_status (role, status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Single-use links sent by e-mail to someone proving they control an address:
+--   PASSWORD_RESET: "Forgot password?" on the login page, sent to the account's e-mail.
+--   EMAIL_CHANGE: a new e-mail address chosen on the Settings page (`new_email`), sent to
+--     that address. users.email only changes once the link is opened, so the account's
+--     login and password recovery keep working with the old address until then.
+-- Only a SHA-256 hash of the token is stored: the token itself exists in the e-mail only.
+-- `used_at` is set when the link is used and also when a newer link of the same purpose
+-- replaces it, so at most one link per account and purpose works at any time.
+-- `created_at` and `expires_at` are written by the server (not by MySQL's clock).
+CREATE TABLE IF NOT EXISTS account_tokens (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  user_id INT NOT NULL,
+  purpose ENUM('PASSWORD_RESET', 'EMAIL_CHANGE') NOT NULL,
+  token_hash CHAR(64) NOT NULL,
+  new_email VARCHAR(150) NULL,
+  expires_at DATETIME NOT NULL,
+  used_at DATETIME NULL,
+  created_at DATETIME NOT NULL,
+  UNIQUE KEY uq_account_tokens_token_hash (token_hash),
+  KEY idx_account_tokens_user (user_id, purpose, used_at),
+  CONSTRAINT fk_account_tokens_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Registry of Driving School IDs issued by the school.

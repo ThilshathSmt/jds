@@ -8,12 +8,17 @@ import AppError from '../utils/AppError.js'
 import { getDummyHash, hashPassword, verifyPassword } from '../utils/passwordUtils.js'
 
 // The only user fields that ever leave the server. Never the password hash.
+// `profilePictureUrl` is the API path of the signed-in user's own picture (null: none);
+// its `v` changes with every new picture, so a browser never shows an old one.
 export const toPublicUser = (user) => ({
   id: user.id,
   drivingSchoolId: user.driving_school_id,
   name: user.name,
   email: user.email,
   role: user.role,
+  profilePictureUrl: user.profile_picture
+    ? `/api/profile/picture?v=${encodeURIComponent(user.profile_picture.replace(/\.[^.]*$/, ''))}`
+    : null,
 })
 
 const ID_UNAVAILABLE_MESSAGES = {
