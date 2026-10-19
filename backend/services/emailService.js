@@ -1,5 +1,5 @@
-// Sends the account e-mails (password reset, e-mail change verification) through EmailJS's
-// REST API, from the server: the private key stays in the server's environment and the
+// Sends the account e-mails (password reset, e-mail change verification, the approval of a
+// registration application) through EmailJS's REST API, from the server: the private key stays in the server's environment and the
 // browser never takes part. A successful send only means EmailJS accepted the e-mail; what
 // the link allows is decided by the server when it is opened (see accountService.js).
 //
@@ -7,6 +7,8 @@
 //   to_email, to_name, subject, message, action_label, action_url, expiry_minutes, app_name
 // plus reset_url and driving_school_id (password reset: the ID is what the account logs in
 // with) or verification_url (e-mail change), for templates that prefer a specific name.
+// The approval e-mail has its own template (EMAILJS_APPROVAL_TEMPLATE_ID), with to_email,
+// to_name, subject, driving_school_id, registration_url, app_name and message.
 // Never a password.
 
 import env from '../config/env.js'
@@ -16,9 +18,10 @@ const EMAILJS_SEND_URL = 'https://api.emailjs.com/api/v1.0/email/send'
 const APP_NAME = 'Jeslan Driving School'
 const SEND_TIMEOUT_MS = 10000
 
-export const isEmailConfigured = () => {
-  const { serviceId, publicKey, privateKey, resetTemplateId } = env.emailjs
-  return Boolean(serviceId && publicKey && privateKey && resetTemplateId)
+// The account settings, and the template of one kind of e-mail (the reset one by default)
+export const isEmailConfigured = (templateId = env.emailjs.resetTemplateId) => {
+  const { serviceId, publicKey, privateKey } = env.emailjs
+  return Boolean(serviceId && publicKey && privateKey && templateId)
 }
 
 // The default transport: one POST to EmailJS. Throws when EmailJS refuses the e-mail.
@@ -52,7 +55,7 @@ export const setEmailTransport = (replacement) => {
 
 const send = async (templateId, templateParams) => {
   // Tests run without EmailJS settings; a real send needs them
-  if (transport === sendWithEmailJs && !isEmailConfigured()) {
+  if (transport === sendWithEmailJs && !isEmailConfigured(templateId)) {
     throw new AppError(503, 'E-mail sending is not set up on the server. Please contact the school.')
   }
   await transport({ templateId, templateParams: { app_name: APP_NAME, ...templateParams } })
@@ -88,4 +91,16 @@ export const sendEmailChangeVerification = ({ email, name }, { verificationUrl, 
     action_url: verificationUrl,
     verification_url: verificationUrl,
     expiry_minutes: String(expiryMinutes),
+  })
+
+// A first-time application was approved: the Driving School ID the student registers and
+// logs in with, and where to register. No password: the student chooses one when registering.
+export const sendStudentApprovalEmail = ({ email, name }, { drivingSchoolId, registrationUrl }) =>
+  send(env.emailjs.approvalTemplateId, {
+    to_email: email,
+    to_name: name,
+    subject: `Your ${APP_NAME} application has been approved`,
+    driving_school_id: drivingSchoolId,
+    registration_url: registrationUrl,
+    message: `Congratulations! Your registration application has been approved and your Driving School ID is ${drivingSchoolId}. To create your student account, open ${registrationUrl}, enter this Driving School ID, check that the name and e-mail shown are yours, and choose a password. After that, you log in with your Driving School ID and that password. Keep your Driving School ID safe: you need it every time you log in.`,
   })

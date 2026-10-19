@@ -9,7 +9,6 @@
 //
 // Every function takes `now` last. Callers leave it out; tests pass a fixed time.
 
-import { open } from 'node:fs/promises'
 import path from 'node:path'
 import { withTransaction } from '../config/database.js'
 import env from '../config/env.js'
@@ -17,7 +16,7 @@ import { PROFILE_PICTURE_TYPES, TOKEN_PURPOSES } from '../config/account.js'
 import * as accountTokenModel from '../models/accountTokenModel.js'
 import * as userModel from '../models/userModel.js'
 import AppError from '../utils/AppError.js'
-import { removeFile } from '../utils/fileUtils.js'
+import { isGenuineImage, removeFile } from '../utils/fileUtils.js'
 import { hashPassword, verifyPassword } from '../utils/passwordUtils.js'
 import { sendEmailChangeLink } from './accountService.js'
 import { toPublicUser } from './authService.js'
@@ -110,28 +109,6 @@ export const changePassword = async (userId, { currentPassword, newPassword }, n
 
 // ---- Profile picture
 
-// First bytes every genuine file of that type starts with (WebP: "RIFF" .... "WEBP")
-const PICTURE_SIGNATURES = {
-  'image/png': [[0, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]]],
-  'image/jpeg': [[0, [0xff, 0xd8, 0xff]]],
-  'image/webp': [
-    [0, [0x52, 0x49, 0x46, 0x46]],
-    [8, [0x57, 0x45, 0x42, 0x50]],
-  ],
-}
-
-const isGenuinePicture = async (filePath, mimeType) => {
-  const file = await open(filePath, 'r')
-  try {
-    const { buffer, bytesRead } = await file.read(Buffer.alloc(12), 0, 12, 0)
-    return PICTURE_SIGNATURES[mimeType].every(
-      ([offset, bytes]) => bytesRead >= offset + bytes.length && bytes.every((byte, index) => buffer[offset + index] === byte),
-    )
-  } finally {
-    await file.close()
-  }
-}
-
 const picturePath = (storedName) => path.join(env.profileUploadsDir, path.basename(storedName))
 
 // `file` is the upload multer saved (see uploadMiddleware.js). Replaces the previous picture,
@@ -143,7 +120,7 @@ export const setProfilePicture = async (userId, file) => {
   }
   try {
     const mimeType = PROFILE_PICTURE_TYPES[path.extname(file.filename).toLowerCase()]
-    if (!mimeType || !(await isGenuinePicture(file.path, mimeType))) {
+    if (!mimeType || !(await isGenuineImage(file.path, mimeType))) {
       const message = 'The file is not a valid JPG, PNG or WebP image.'
       throw new AppError(400, message, { picture: message })
     }

@@ -54,6 +54,24 @@ CREATE TABLE IF NOT EXISTS account_tokens (
   CONSTRAINT fk_account_tokens_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Images on the public Gallery page, uploaded by admins. The file is on disk under
+-- uploads/gallery as `stored_name` (a random name chosen by the server, never the client's)
+-- and is served by the row's id, so no path from a request ever reaches the disk. Deleting
+-- an image removes the row first and then the file.
+CREATE TABLE IF NOT EXISTS gallery_images (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  title VARCHAR(150) NOT NULL,
+  original_name VARCHAR(255) NOT NULL,
+  stored_name VARCHAR(100) NOT NULL,
+  mime_type VARCHAR(50) NOT NULL,
+  size_bytes INT UNSIGNED NOT NULL,
+  uploaded_by INT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_gallery_images_stored_name (stored_name),
+  KEY idx_gallery_images_created (created_at),
+  CONSTRAINT fk_gallery_images_uploaded_by FOREIGN KEY (uploaded_by) REFERENCES users (id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- Registry of Driving School IDs issued by the school.
 -- An ID is issued with a role; a person can only register with an 'available' ID,
 -- and the account takes its role from this table (never from the registration request).
@@ -189,6 +207,16 @@ CREATE TABLE IF NOT EXISTS registration_applications (
   reviewed_by INT NULL,
   reviewed_at TIMESTAMP NULL,
   approved_at TIMESTAMP NULL,
+  -- The e-mail telling an approved first-time applicant their Driving School ID (sent after
+  -- the approval is saved, see registrationApplicationService.js). NULL: never asked for
+  -- (not approved, a reapplication, or approved before these e-mails existed).
+  --   PENDING -> SENDING -> SENT or FAILED (an admin can retry); NO_EMAIL: no address given.
+  -- A send is claimed by moving to SENDING in one UPDATE, so it happens once at a time and
+  -- never again after SENT. `approval_email_error` is the last failure, for the admin.
+  approval_email_status ENUM('PENDING', 'SENDING', 'SENT', 'FAILED', 'NO_EMAIL') NULL,
+  approval_email_attempted_at DATETIME NULL,
+  approval_email_sent_at DATETIME NULL,
+  approval_email_error VARCHAR(300) NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uq_registration_applications_driving_school_id (driving_school_id),

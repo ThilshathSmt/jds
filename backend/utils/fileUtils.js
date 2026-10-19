@@ -33,6 +33,33 @@ export const hasValidSignature = async (filePath, mimeType) => {
   }
 }
 
+// Images (profile pictures, gallery): first bytes every genuine file of that type has at
+// the given offsets (WebP: "RIFF" .... "WEBP")
+const IMAGE_SIGNATURES = {
+  'image/png': [[0, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]]],
+  'image/jpeg': [[0, [0xff, 0xd8, 0xff]]],
+  'image/webp': [
+    [0, [0x52, 0x49, 0x46, 0x46]],
+    [8, [0x57, 0x45, 0x42, 0x50]],
+  ],
+}
+
+// True when the file's content really is the image type its extension claims
+export const isGenuineImage = async (filePath, mimeType) => {
+  const signature = IMAGE_SIGNATURES[mimeType]
+  if (!signature) return false
+  const file = await open(filePath, 'r')
+  try {
+    const { buffer, bytesRead } = await file.read(Buffer.alloc(12), 0, 12, 0)
+    return signature.every(
+      ([offset, bytes]) =>
+        bytesRead >= offset + bytes.length && bytes.every((byte, index) => buffer[offset + index] === byte),
+    )
+  } finally {
+    await file.close()
+  }
+}
+
 // Deletes a file, ignoring the case where it is already gone
 export const removeFile = async (filePath) => {
   try {

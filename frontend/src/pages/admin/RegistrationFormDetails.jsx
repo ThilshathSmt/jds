@@ -6,6 +6,7 @@ import {
   FaClipboardCheck,
   FaClipboardList,
   FaDownload,
+  FaEnvelope,
   FaEye,
   FaFileLines,
   FaMoneyBillWave,
@@ -17,7 +18,7 @@ import DashboardSection from '../../components/dashboard/DashboardSection'
 import DashboardWelcome from '../../components/dashboard/DashboardWelcome'
 import StatusBadge from '../../components/dashboard/StatusBadge'
 import { formatPrice, paymentMethods } from '../../data/registrationData'
-import { getApplication, getDocumentUrl } from '../../services/applicationApi'
+import { getApplication, getDocumentUrl, retryApprovalEmail } from '../../services/applicationApi'
 
 const LIST_PATH = '/admin-dashboard/registration-forms'
 
@@ -33,6 +34,65 @@ const formatSize = (bytes) =>
   bytes < 1024 * 1024 ? `${Math.ceil(bytes / 1024)} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 
 const getPaymentMethodLabel = (id) => paymentMethods.find((method) => method.id === id)?.label ?? id
+
+const APPROVAL_EMAIL_LABELS = {
+  PENDING: 'Waiting to be sent',
+  SENDING: 'Being sent',
+  SENT: 'Sent',
+  FAILED: 'Not sent: sending failed',
+  NO_EMAIL: 'Not sent: no e-mail address on the application',
+  NOT_SENT: 'Not sent (approved before approval e-mails existed)',
+}
+
+// What happened to the e-mail giving the student their Driving School ID, with a button to
+// send it again after a failure. Resending never issues another ID.
+function ApprovalEmailStatus({ application, onChanged }) {
+  const { status, sentAt, error } = application.approvalEmail
+  const [busy, setBusy] = useState(false)
+  const [notice, setNotice] = useState(null)
+  const canSend =
+    application.email && !application.accountRegistered && ['FAILED', 'NOT_SENT', 'PENDING', 'SENDING'].includes(status)
+
+  const send = async () => {
+    setBusy(true)
+    setNotice(null)
+    try {
+      const { application: updated, message } = await retryApprovalEmail(application.id)
+      onChanged(updated)
+      setNotice({ ok: updated.approvalEmail?.status === 'SENT', message })
+    } catch (sendError) {
+      setNotice({ ok: false, message: sendError.message })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <span className={status === 'SENT' ? 'text-emerald-700' : status === 'FAILED' ? 'text-danger-dark' : ''}>
+        {APPROVAL_EMAIL_LABELS[status] ?? status}
+        {status === 'SENT' && sentAt && ` (${formatDateTime(sentAt)})`}
+      </span>
+      {status === 'FAILED' && error && <span className="text-xs text-gray-500">{error}</span>}
+      {canSend && (
+        <button
+          type="button"
+          onClick={send}
+          disabled={busy}
+          className="inline-flex w-fit cursor-pointer items-center gap-1.5 rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-brand-dark disabled:cursor-wait disabled:opacity-60"
+        >
+          <FaEnvelope aria-hidden="true" />
+          {busy ? 'Sending...' : status === 'FAILED' ? 'Retry E-mail' : 'Send E-mail'}
+        </button>
+      )}
+      {notice && (
+        <span role={notice.ok ? 'status' : 'alert'} className={`text-sm ${notice.ok ? 'text-emerald-700' : 'text-danger-dark'}`}>
+          {notice.message}
+        </span>
+      )}
+    </div>
+  )
+}
 
 // Label / value rows inside a section
 function DetailList({ rows }) {
@@ -155,6 +215,14 @@ function RegistrationFormDetails() {
                         ? 'Account deleted (ID withdrawn)'
                         : 'Not registered yet',
                   },
+                  ...(application.approvalEmail
+                    ? [
+                        {
+                          label: 'Approval E-mail',
+                          value: <ApprovalEmailStatus application={application} onChanged={handleChanged} />,
+                        },
+                      ]
+                    : []),
                 ]
               : []),
           ]}

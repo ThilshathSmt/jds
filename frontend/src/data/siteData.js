@@ -37,10 +37,10 @@ export const socialLinks = [
   { label: 'Instagram', href: '#instagram', icon: FaInstagram },
 ]
 
-// `to` is a router path. Links to sections that do not exist yet (e.g. /#gallery) are placeholders.
+// `to` is a router path
 export const navLinks = [
   { label: 'Home', to: '/', icon: FaHouse },
-  { label: 'Gallery', to: '/#gallery', icon: FaImages },
+  { label: 'Gallery', to: '/gallery', icon: FaImages },
   // The footer (#contact) is on every page, so this stays on the current page
   { label: 'Contact Us', to: '#contact', icon: FaPhone },
   { label: 'Apply Now', to: '/apply', icon: FaPenToSquare, highlight: true },
@@ -214,7 +214,7 @@ export const footerLinkGroups = [
       { label: 'Home', to: '/' },
       { label: 'About Us', to: '/#resources' },
       { label: 'Courses', to: '/#resources' },
-      { label: 'Gallery', to: '/#gallery' },
+      { label: 'Gallery', to: '/gallery' },
       { label: 'Contact Us', to: '#contact' },
     ],
   },

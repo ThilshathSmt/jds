@@ -3,6 +3,7 @@ import cors from 'cors'
 import express from 'express'
 import env from './config/env.js'
 import { errorHandler, notFound } from './middleware/errorMiddleware.js'
+import galleryRoutes from './routes/galleryRoutes.js'
 import adminRoutes from './routes/adminRoutes.js'
 import authRoutes from './routes/authRoutes.js'
 import instructorRoutes from './routes/instructorRoutes.js'
@@ -31,6 +32,7 @@ app.use('/api/student', studentRoutes)
 app.use('/api/instructor', instructorRoutes)
 app.use('/api/notifications', notificationRoutes)
 app.use('/api/profile', profileRoutes)
+app.use('/api/gallery', galleryRoutes)
 
 app.use(notFound)
 app.use(errorHandler)

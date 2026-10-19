@@ -2,12 +2,14 @@ import { Router } from 'express'
 import { adminDashboard } from '../controllers/dashboardController.js'
 import * as examDateRequestController from '../controllers/examDateRequestController.js'
 import * as examReattemptRequestController from '../controllers/examReattemptRequestController.js'
+import * as galleryController from '../controllers/galleryController.js'
 import * as provisioningController from '../controllers/provisioningController.js'
 import * as applicationController from '../controllers/registrationApplicationController.js'
 import * as practicalController from '../controllers/practicalController.js'
 import * as settingsController from '../controllers/settingsController.js'
 import { requireAuth } from '../middleware/authMiddleware.js'
 import { requireRole } from '../middleware/roleMiddleware.js'
+import { uploadGalleryImages } from '../middleware/uploadMiddleware.js'
 import userManagementRoutes from './userManagementRoutes.js'
 
 const router = Router()
@@ -25,6 +27,8 @@ router.post('/driving-school-ids', provisioningController.createDrivingSchoolId)
 router.get('/registration-forms', applicationController.list)
 router.get('/registration-forms/:id', applicationController.getDetails)
 router.post('/registration-forms/:id/approve', applicationController.approve)
+// The e-mail with the Driving School ID, after it failed: never issues another ID
+router.post('/registration-forms/:id/approval-email', applicationController.retryApprovalEmail)
 router.post('/registration-forms/:id/suspend', applicationController.suspend)
 router.post('/registration-forms/:id/reject', applicationController.reject)
 router.delete('/registration-forms/:id', applicationController.remove)
@@ -39,6 +43,11 @@ router.put('/packages/:id', settingsController.updatePackage)
 // Driving Exam: the weekdays (Monday to Friday) students may request an examination date on
 router.get('/exam-weekdays', settingsController.getExamWeekdays)
 router.put('/exam-weekdays', settingsController.updateExamWeekdays)
+
+// Gallery: the images of the public Gallery page (anyone can see them at /api/gallery)
+router.get('/gallery', galleryController.listForAdmin)
+router.post('/gallery', uploadGalleryImages, galleryController.upload)
+router.delete('/gallery/:id', galleryController.remove)
 
 // Lessons: practical training after the driving school exam, and the practical test
 router.get('/practical/cycles', practicalController.listCycles)
