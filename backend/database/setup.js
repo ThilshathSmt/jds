@@ -123,6 +123,8 @@ const ADDED_COLUMNS = [
     column: 'medical_report_document_id',
     definition: 'INT NULL AFTER application_id',
   },
+  // The profile picture chosen on the Settings page (NULL: the default icon)
+  { table: 'users', column: 'profile_picture', definition: 'VARCHAR(100) NULL AFTER responsibility' },
 ]
 
 // ENUM columns that were given another value. The column is redefined with the full list

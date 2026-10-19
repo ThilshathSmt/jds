@@ -6,13 +6,16 @@ import DashboardSidebar from './DashboardSidebar'
 import MobileSidebar from './MobileSidebar'
 import NotificationsProvider from '../../context/NotificationsProvider'
 import { useAuth } from '../../context/useAuth'
+import useProfilePicture from '../../utils/useProfilePicture'
 
 // Shared shell for the Admin, Student and Instructor panels: header, sidebar and routed page.
 // Rendered inside <ProtectedRoute>, so a signed-in user with the right role is guaranteed.
 function DashboardLayout({ role, panelTitle, user: panelUser, menuItems }) {
-  // Panel data supplies the avatar icon and role label; the name is the signed-in user's
+  // Panel data supplies the default avatar icon and the role label; the name and the
+  // profile picture are the signed-in user's (updated as soon as Settings saves them)
   const { user: authUser } = useAuth()
-  const user = { ...panelUser, name: authUser?.name ?? panelUser.name }
+  const avatar = useProfilePicture(authUser?.profilePictureUrl)
+  const user = { ...panelUser, name: authUser?.name ?? panelUser.name, avatar }
   const [collapsed, setCollapsed] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const { pathname } = useLocation()
@@ -28,6 +31,7 @@ function DashboardLayout({ role, panelTitle, user: panelUser, menuItems }) {
     <NotificationsProvider>
       <div data-role={role} className="min-h-dvh bg-gray-100">
         <DashboardHeader
+          role={role}
           panelTitle={panelTitle}
           user={user}
           menuOpen={drawerOpen}

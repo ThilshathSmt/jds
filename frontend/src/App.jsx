@@ -6,10 +6,14 @@ import DashboardLayout from './components/dashboard/DashboardLayout'
 import Home from './pages/Home'
 import ExamPapers from './pages/ExamPapers'
 import ExamPaperDetail from './pages/ExamPaperDetail'
+import ForgotPassword from './pages/ForgotPassword'
 import Login from './pages/Login'
 import Reapply from './pages/Reapply'
 import Register from './pages/Register'
 import Registration from './pages/Registration'
+import ResetPassword from './pages/ResetPassword'
+import Settings from './pages/Settings'
+import VerifyEmail from './pages/VerifyEmail'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminExamDateRequestDetails from './pages/admin/ExamDateRequestDetails'
 import AdminNotifications from './pages/admin/Notifications'
@@ -50,6 +54,10 @@ function App() {
           <Route path="/reapply" element={<Reapply />} />
           <Route path="/login" element={<GuestRoute><Login /></GuestRoute>} />
           <Route path="/register" element={<GuestRoute><Register /></GuestRoute>} />
+          {/* Password recovery and e-mail confirmation: opened from e-mailed links, no login */}
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/exam-papers" element={<ExamPapers />} />
           <Route path="/exam-papers/:paperId" element={<ExamPaperDetail />} />
         </Route>
@@ -67,6 +75,7 @@ function App() {
           <Route path="notifications" element={<AdminNotifications />} />
           <Route path="driving-exam" element={<AdminDrivingExam />} />
           <Route path="packages-settings" element={<PackagesSettings />} />
+          <Route path="settings" element={<Settings />} />
           <Route path="lessons" element={<AdminLessons />} />
           <Route path="lessons/:cycleId" element={<AdminLessonDetails />} />
           <Route path="feedbacks" element={<AdminFeedbacks />} />
@@ -95,6 +104,7 @@ function App() {
           <Route path="exams/:examType/:paperId/results/:attemptId" element={<ExamResult />} />
           <Route path="notifications" element={<StudentNotifications />} />
           <Route path="lessons" element={<StudentLessons />} />
+          <Route path="settings" element={<Settings />} />
         </Route>
         <Route
           path="/instructor-dashboard"
@@ -105,6 +115,7 @@ function App() {
           <Route index element={<InstructorDashboard />} />
           <Route path="lessons" element={<InstructorLessons />} />
           <Route path="feedbacks" element={<InstructorFeedbacks />} />
+          <Route path="settings" element={<Settings />} />
         </Route>
       </Routes>
     </BrowserRouter>

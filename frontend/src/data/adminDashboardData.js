@@ -10,6 +10,7 @@ import {
   FaChalkboardUser,
   FaClipboardList,
   FaGaugeHigh,
+  FaGear,
   FaRoad,
   FaSliders,
   FaUserGraduate,
@@ -41,6 +42,7 @@ export const adminPanel = {
       to: '/admin-dashboard/packages-settings',
       icon: FaSliders,
     },
+    { label: 'Settings', to: '/admin-dashboard/settings', icon: FaGear },
   ],
 }
 

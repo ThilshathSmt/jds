@@ -30,7 +30,8 @@ const HANDLES_LOCK_ITSELF = ['/api/auth/', '/api/reapplications']
 
 // Resolves with the response's `data`; rejects with an ApiError carrying the backend message.
 // `body` is sent as JSON, or as multipart/form-data when it is a FormData (file uploads).
-export const apiRequest = async (path, { method = 'GET', body } = {}) => {
+// `withMessage` adds the backend's success message to the result as `message`.
+export const apiRequest = async (path, { method = 'GET', body, withMessage = false } = {}) => {
   const isFormData = body instanceof FormData
   let response
   try {
@@ -57,5 +58,5 @@ export const apiRequest = async (path, { method = 'GET', body } = {}) => {
       payload?.code,
     )
   }
-  return payload.data
+  return withMessage ? { ...payload.data, message: payload.message } : payload.data
 }

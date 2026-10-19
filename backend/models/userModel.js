@@ -4,7 +4,7 @@
 import pool from '../config/database.js'
 
 const USER_COLUMNS =
-  'id, driving_school_id, name, email, password_hash, role, status, session_version, locked_at, responsibility, created_at, updated_at'
+  'id, driving_school_id, name, email, password_hash, role, status, session_version, locked_at, responsibility, profile_picture, created_at, updated_at'
 
 // Columns for admin listings: never the password hash
 const LIST_COLUMNS = 'id, driving_school_id, name, email, role, status, locked_at, responsibility, created_at'
@@ -102,4 +102,25 @@ export const incrementSessionVersion = async (id, db = pool) => {
 
 export const remove = async (id, db = pool) => {
   await db.execute('DELETE FROM users WHERE id = ?', [id])
+}
+
+// ---- Settings page and account recovery. Each changes exactly one thing about the
+// account: never its Driving School ID, role, status or lock.
+
+export const updateName = async (id, name, db = pool) => {
+  await db.execute('UPDATE users SET name = ? WHERE id = ?', [name, id])
+}
+
+// Fails with ER_DUP_ENTRY when another account already has the address
+export const updateEmail = async (id, email, db = pool) => {
+  await db.execute('UPDATE users SET email = ? WHERE id = ?', [email, id])
+}
+
+export const updatePasswordHash = async (id, passwordHash, db = pool) => {
+  await db.execute('UPDATE users SET password_hash = ? WHERE id = ?', [passwordHash, id])
+}
+
+// `storedName` is the file's name in the profile picture folder, or null for none
+export const updateProfilePicture = async (id, storedName, db = pool) => {
+  await db.execute('UPDATE users SET profile_picture = ? WHERE id = ?', [storedName, id])
 }

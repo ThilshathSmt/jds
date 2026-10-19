@@ -2,7 +2,7 @@ import { createContext, useContext } from 'react'
 
 export const AuthContext = createContext(null)
 
-// { user, loading, login, register, logout } from the nearest AuthProvider
+// { user, loading, login, register, logout, updateUser } from the nearest AuthProvider
 export const useAuth = () => {
   const auth = useContext(AuthContext)
   if (!auth) throw new Error('useAuth must be used inside <AuthProvider>')

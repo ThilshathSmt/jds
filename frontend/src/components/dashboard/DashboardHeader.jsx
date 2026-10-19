@@ -1,14 +1,14 @@
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { FaBars, FaMagnifyingGlass, FaRightFromBracket } from 'react-icons/fa6'
 import Logo from '../Logo'
 import NotificationBell from './NotificationBell'
 import UserAvatar from './UserAvatar'
-import { useAuth } from '../../context/useAuth'
+import { DASHBOARD_PATHS, useAuth } from '../../context/useAuth'
 
 const iconButton =
   'relative flex cursor-pointer items-center rounded-full p-2.5 text-lg text-white transition hover:bg-white/15'
 
-function DashboardHeader({ panelTitle, user, menuOpen, onMenuClick }) {
+function DashboardHeader({ role, panelTitle, user, menuOpen, onMenuClick }) {
   const navigate = useNavigate()
   const { logout } = useAuth()
 
@@ -62,14 +62,17 @@ function DashboardHeader({ panelTitle, user, menuOpen, onMenuClick }) {
 
           <NotificationBell className={iconButton} />
 
-          {/* TODO: Link to the profile page once it exists */}
-          <div className="flex items-center gap-2 px-1 sm:px-2">
+          <Link
+            to={`${DASHBOARD_PATHS[role]}/settings`}
+            title="Settings"
+            className="flex items-center gap-2 rounded-full px-1 py-1 transition hover:bg-white/15 sm:px-2"
+          >
             <UserAvatar user={user} size="sm" />
             <div className="hidden leading-tight lg:block">
               <p className="text-sm font-semibold">{user.name}</p>
               <p className="text-xs text-white/70">{user.role}</p>
             </div>
-          </div>
+          </Link>
 
           <button
             type="button"
