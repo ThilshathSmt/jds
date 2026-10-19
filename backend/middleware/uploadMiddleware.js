@@ -5,6 +5,7 @@ import multer from 'multer'
 import env from '../config/env.js'
 import AppError from '../utils/AppError.js'
 import { PROFILE_PICTURE_MAX_BYTES, PROFILE_PICTURE_TYPES } from '../config/account.js'
+import { GALLERY_IMAGE_MAX_BYTES, GALLERY_IMAGE_TYPES, GALLERY_MAX_FILES_PER_UPLOAD } from '../config/gallery.js'
 import { RECEIPT_MAX_BYTES, RECEIPT_TYPES } from '../utils/fileUtils.js'
 
 // Files are saved in `directory`, which is outside any folder served to the public
@@ -82,3 +83,33 @@ export const uploadProfilePicture = multer({
   },
   limits: { fileSize: PROFILE_PICTURE_MAX_BYTES, files: 1, fields: 0 },
 }).single('picture')
+
+// Parses an admin's Gallery upload: the images into req.files (field "images"). Images
+// only (the content is checked again in galleryService.js), kept apart from other uploads.
+// A file of another type, or over a limit, stops the whole upload; multer deletes what it
+// had saved. Its limits are reported with the gallery's own figures (not the 2 MB of the
+// other uploads).
+const parseGalleryImages = multer({
+  storage: createStorage(env.galleryUploadsDir),
+  fileFilter: (req, file, callback) => {
+    if (!GALLERY_IMAGE_TYPES[path.extname(file.originalname).toLowerCase()]) {
+      const message = `${file.originalname}: please upload JPG, PNG or WebP images only.`
+      return callback(new AppError(400, message, { images: message }))
+    }
+    return callback(null, true)
+  },
+  limits: { fileSize: GALLERY_IMAGE_MAX_BYTES, files: GALLERY_MAX_FILES_PER_UPLOAD, fields: 0 },
+}).array('images', GALLERY_MAX_FILES_PER_UPLOAD)
+
+const GALLERY_LIMIT_MESSAGES = {
+  LIMIT_FILE_SIZE: `Each image can be at most ${GALLERY_IMAGE_MAX_BYTES / (1024 * 1024)} MB. Nothing was uploaded.`,
+  LIMIT_FILE_COUNT: `Upload at most ${GALLERY_MAX_FILES_PER_UPLOAD} images at a time.`,
+  LIMIT_UNEXPECTED_FILE: `Upload at most ${GALLERY_MAX_FILES_PER_UPLOAD} images at a time.`,
+}
+
+export const uploadGalleryImages = (req, res, next) =>
+  parseGalleryImages(req, res, (error) => {
+    if (error?.name !== 'MulterError') return next(error)
+    const message = GALLERY_LIMIT_MESSAGES[error.code] ?? 'The upload could not be processed.'
+    return next(new AppError(400, message, { images: message }))
+  })

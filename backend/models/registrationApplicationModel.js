@@ -81,10 +81,40 @@ export const findByDrivingSchoolId = async (drivingSchoolId, db = pool) => {
   return rows[0] ?? null
 }
 
-export const markApproved = async (id, drivingSchoolId, db = pool) => {
+// `approvalEmailStatus` is PENDING (an e-mail is to be sent) or NO_EMAIL (no address given)
+export const markApproved = async (id, drivingSchoolId, approvalEmailStatus, db = pool) => {
   await db.execute(
-    "UPDATE registration_applications SET status = 'APPROVED', driving_school_id = ?, approved_at = NOW() WHERE id = ?",
-    [drivingSchoolId, id],
+    `UPDATE registration_applications
+        SET status = 'APPROVED', driving_school_id = ?, approved_at = NOW(), approval_email_status = ?
+      WHERE id = ?`,
+    [drivingSchoolId, approvalEmailStatus, id],
+  )
+}
+
+// Claims the sending of the approval e-mail of an approved first-time application: true
+// for exactly one caller. Possible while it was never sent (NULL: approved before these
+// e-mails existed), is PENDING or FAILED, or has been SENDING since before `staleBefore`
+// (a send that never finished). Never after SENT.
+export const claimApprovalEmail = async (id, now, staleBefore, db = pool) => {
+  const [result] = await db.execute(
+    `UPDATE registration_applications
+        SET approval_email_status = 'SENDING', approval_email_attempted_at = ?
+      WHERE id = ? AND status = 'APPROVED' AND application_type = 'NEW_STUDENT'
+        AND driving_school_id IS NOT NULL
+        AND (approval_email_status IS NULL OR approval_email_status IN ('PENDING', 'FAILED')
+             OR (approval_email_status = 'SENDING' AND approval_email_attempted_at < ?))`,
+    [now, id, staleBefore],
+  )
+  return result.affectedRows === 1
+}
+
+// The outcome of a claimed send: SENT (with `sentAt`), FAILED (with `error`) or NO_EMAIL
+export const recordApprovalEmail = async (id, { status, sentAt = null, error = null }, db = pool) => {
+  await db.execute(
+    `UPDATE registration_applications
+        SET approval_email_status = ?, approval_email_sent_at = ?, approval_email_error = ?
+      WHERE id = ?`,
+    [status, sentAt, error === null ? null : error.slice(0, 300), id],
   )
 }
 

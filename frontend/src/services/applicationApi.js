@@ -38,6 +38,11 @@ export const getApplication = async (id) => {
   return application
 }
 
+// Sends the approval e-mail (with the Driving School ID) again after it failed. Never
+// issues another ID. Resolves with the updated application.
+export const retryApprovalEmail = async (id) =>
+  apiRequest(`${ADMIN_PATH}/${id}/approval-email`, { method: 'POST', withMessage: true })
+
 export const approveApplication = async (id) => {
   const { application } = await apiRequest(`${ADMIN_PATH}/${id}/approve`, { method: 'POST' })
   return application

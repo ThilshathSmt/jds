@@ -46,13 +46,33 @@ export const getDetails = async (req, res) => {
   sendSuccess(res, { message: 'Registration application', data: { application } })
 }
 
+// What happened to the approval e-mail, for the admin's message
+const APPROVAL_EMAIL_MESSAGES = {
+  SENT: 'The Driving School ID has been e-mailed to the student.',
+  FAILED: 'The approval e-mail could not be sent; you can retry it from the application.',
+  NO_EMAIL: 'The application has no e-mail address, so no e-mail was sent.',
+}
+
 export const approve = async (req, res) => {
   const application = await applicationService.approve(parseId(req.params.id), req.user.id)
+  const emailNote = APPROVAL_EMAIL_MESSAGES[application.approvalEmail?.status]
   sendSuccess(res, {
     message:
       application.type === 'REAPPLICATION'
         ? `Reapplication approved. The account ${application.drivingSchoolId} is active again.`
-        : `Application approved. Driving School ID ${application.drivingSchoolId} issued.`,
+        : `Application approved. Driving School ID ${application.drivingSchoolId} issued.${emailNote ? ` ${emailNote}` : ''}`,
+    data: { application },
+  })
+}
+
+// POST /api/admin/registration-forms/:id/approval-email: send the approval e-mail again
+export const retryApprovalEmail = async (req, res) => {
+  const application = await applicationService.retryApprovalEmail(parseId(req.params.id))
+  const sent = application.approvalEmail?.status === 'SENT'
+  sendSuccess(res, {
+    message: sent
+      ? 'The approval e-mail has been sent.'
+      : 'The approval e-mail could not be sent. Please check the e-mail settings and try again.',
     data: { application },
   })
 }

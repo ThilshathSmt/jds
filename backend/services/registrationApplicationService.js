@@ -13,12 +13,16 @@ import {
   hasValidSignature,
   removeFile,
 } from '../utils/fileUtils.js'
+import { frontendUrl, sendStudentApprovalEmail } from './emailService.js'
 import { issueDrivingSchoolId } from './provisioningService.js'
 import * as reapplicationService from './reapplicationService.js'
 import { quoteRegistration } from './settingsService.js'
 
 const NOT_FOUND = 'Registration application not found.'
 const REAPPLICATION = 'REAPPLICATION'
+// A send still marked SENDING after this long never finished (the server stopped while
+// sending): it may be tried again
+const APPROVAL_EMAIL_STALE_MS = 5 * 60 * 1000
 
 const toSummary = (row) => ({
   id: row.id,
@@ -54,6 +58,18 @@ const toDetails = (row, documents) => ({
   approvedAt: row.approved_at,
   rejectionReason: row.rejection_reason,
   reviewedAt: row.reviewed_at,
+  // The e-mail with the Driving School ID, for an approved first-time application (null
+  // otherwise). `status` is PENDING, SENDING, SENT, FAILED, NO_EMAIL or NOT_SENT (approved
+  // before these e-mails existed); `error` is the last failure.
+  approvalEmail:
+    row.status === 'APPROVED' && row.application_type !== REAPPLICATION
+      ? {
+          status: row.approval_email_status ?? 'NOT_SENT',
+          sentAt: row.approval_email_sent_at,
+          attemptedAt: row.approval_email_attempted_at,
+          error: row.approval_email_error,
+        }
+      : null,
   // True once the applicant has created their login account with the issued ID
   accountRegistered: row.account_user_id !== null,
   // True when the student's account was later deleted by an admin (the ID is withdrawn)
@@ -108,6 +124,8 @@ export const getDetails = loadDetails
 // Approves a NEW application and issues its student Driving School ID, all in one
 // transaction: either the application is approved with an ID, or nothing changes.
 // No user account is created here; the applicant registers with the ID afterwards.
+// Only once that is saved is the ID e-mailed to the applicant (see deliverApprovalEmail):
+// a failed e-mail never undoes the approval or issues another ID, it can be retried.
 // A reapplication is approved differently: the existing account is unlocked and nothing
 // is issued (see reapplicationService.approve).
 export const approve = async (id, adminId) => {
@@ -130,8 +148,73 @@ export const approve = async (id, adminId) => {
     }
 
     const drivingSchoolId = await issueDrivingSchoolId({ role: 'student', createdBy: adminId }, db)
-    await applicationModel.markApproved(id, drivingSchoolId, db)
+    await applicationModel.markApproved(id, drivingSchoolId, application.email ? 'PENDING' : 'NO_EMAIL', db)
   })
+  await deliverApprovalEmail(id)
+  return loadDetails(id)
+}
+
+// Sends the approval e-mail of an approved first-time application, if it is due, and
+// records the outcome. Never throws: the approval stands whatever happens to the e-mail.
+// The send is claimed in the database first, so two calls at once (or a call after it was
+// sent) never send it twice. Returns the status it ended with, or null when not claimed.
+export const deliverApprovalEmail = async (id, now = new Date()) => {
+  try {
+    const application = await applicationModel.findById(id)
+    if (!application?.driving_school_id || application.application_type === REAPPLICATION) return null
+    if (!application.email) {
+      if (application.approval_email_status !== 'SENT') {
+        await applicationModel.recordApprovalEmail(id, { status: 'NO_EMAIL' })
+      }
+      return 'NO_EMAIL'
+    }
+    const claimed = await applicationModel.claimApprovalEmail(
+      id,
+      now,
+      new Date(now.getTime() - APPROVAL_EMAIL_STALE_MS),
+    )
+    if (!claimed) return null
+
+    try {
+      await sendStudentApprovalEmail(
+        { email: application.email, name: application.full_name },
+        { drivingSchoolId: application.driving_school_id, registrationUrl: frontendUrl('/register', {}) },
+      )
+    } catch (error) {
+      // EmailJS's reason (never the e-mail's contents), for the admin and the server log
+      console.error(`Approval e-mail for application ${id} could not be sent: ${error.message}`)
+      await applicationModel.recordApprovalEmail(id, { status: 'FAILED', error: error.message })
+      return 'FAILED'
+    }
+    await applicationModel.recordApprovalEmail(id, { status: 'SENT', sentAt: new Date() })
+    return 'SENT'
+  } catch (error) {
+    // A database failure while recording: logged, the approval is not affected
+    console.error(`Approval e-mail for application ${id} could not be processed: ${error.message}`)
+    return null
+  }
+}
+
+// Admin: send the approval e-mail again after it failed (or of an application approved
+// before these e-mails existed). Refused once it has been sent, while it is being sent,
+// when there is no address, or when the student has already created their account.
+export const retryApprovalEmail = async (id) => {
+  const application = await applicationModel.findById(id)
+  if (!application) throw new AppError(404, NOT_FOUND)
+  if (application.status !== 'APPROVED' || application.application_type === REAPPLICATION || !application.driving_school_id) {
+    throw new AppError(409, 'Only an approved first-time application has an approval e-mail.')
+  }
+  if (!application.email) {
+    throw new AppError(409, 'This application has no e-mail address, so no e-mail can be sent.')
+  }
+  if (application.approval_email_status === 'SENT') {
+    throw new AppError(409, 'The approval e-mail has already been sent.')
+  }
+  if (application.account_user_id !== null) {
+    throw new AppError(409, 'The student has already created their account with this Driving School ID.')
+  }
+  const status = await deliverApprovalEmail(id)
+  if (status === null) throw new AppError(409, 'The approval e-mail is already being sent. Please refresh in a moment.')
   return loadDetails(id)
 }
 

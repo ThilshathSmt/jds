@@ -20,6 +20,8 @@ const env = {
   reattemptUploadsDir: path.resolve(backendRoot, process.env.UPLOAD_DIR || 'uploads', 'exam-reattempts'),
   // Receipts of practical driving test reattempt fees
   practicalUploadsDir: path.resolve(backendRoot, process.env.UPLOAD_DIR || 'uploads', 'practical-reattempts'),
+  // Images of the public Gallery page, uploaded by admins. Served by id (never by path).
+  galleryUploadsDir: path.resolve(backendRoot, process.env.UPLOAD_DIR || 'uploads', 'gallery'),
   // Profile pictures of every account. Served only to the signed-in owner.
   profileUploadsDir: path.resolve(backendRoot, process.env.UPLOAD_DIR || 'uploads', 'profile-pictures'),
   isProduction: process.env.NODE_ENV === 'production',
@@ -34,7 +36,8 @@ const env = {
     name: process.env.DB_NAME,
   },
   // EmailJS (https://www.emailjs.com), used by the server only: password reset and e-mail
-  // change verification links. The private key never leaves the server.
+  // change verification links, and the approval e-mail with a new student's Driving School
+  // ID. The private key never leaves the server.
   emailjs: {
     serviceId: process.env.EMAILJS_SERVICE_ID,
     publicKey: process.env.EMAILJS_PUBLIC_KEY,
@@ -42,6 +45,8 @@ const env = {
     resetTemplateId: process.env.EMAILJS_RESET_TEMPLATE_ID,
     // Optional: the reset template is used when no separate template is given
     verifyEmailTemplateId: process.env.EMAILJS_VERIFY_EMAIL_TEMPLATE_ID || process.env.EMAILJS_RESET_TEMPLATE_ID,
+    // Its own template: the Driving School ID sent to a newly approved student
+    approvalTemplateId: process.env.EMAILJS_APPROVAL_TEMPLATE_ID,
   },
   admin: {
     drivingSchoolId: process.env.ADMIN_DRIVING_SCHOOL_ID || 'JDS_admin',

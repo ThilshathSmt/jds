@@ -6,6 +6,7 @@ import DashboardLayout from './components/dashboard/DashboardLayout'
 import Home from './pages/Home'
 import ExamPapers from './pages/ExamPapers'
 import ExamPaperDetail from './pages/ExamPaperDetail'
+import Gallery from './pages/Gallery'
 import ForgotPassword from './pages/ForgotPassword'
 import Login from './pages/Login'
 import Reapply from './pages/Reapply'
@@ -20,6 +21,7 @@ import AdminNotifications from './pages/admin/Notifications'
 import AdminReattemptRequestDetails from './pages/admin/ReattemptRequestDetails'
 import AdminDrivingExam from './pages/admin/DrivingExam'
 import AdminFeedbacks from './pages/admin/Feedbacks'
+import AdminGallery from './pages/admin/Gallery'
 import AdminLessonDetails from './pages/admin/LessonDetails'
 import AdminLessons from './pages/admin/Lessons'
 import ManageUsers from './pages/admin/ManageUsers'
@@ -58,6 +60,7 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="/gallery" element={<Gallery />} />
           <Route path="/exam-papers" element={<ExamPapers />} />
           <Route path="/exam-papers/:paperId" element={<ExamPaperDetail />} />
         </Route>
@@ -75,6 +78,7 @@ function App() {
           <Route path="notifications" element={<AdminNotifications />} />
           <Route path="driving-exam" element={<AdminDrivingExam />} />
           <Route path="packages-settings" element={<PackagesSettings />} />
+          <Route path="gallery" element={<AdminGallery />} />
           <Route path="settings" element={<Settings />} />
           <Route path="lessons" element={<AdminLessons />} />
           <Route path="lessons/:cycleId" element={<AdminLessonDetails />} />

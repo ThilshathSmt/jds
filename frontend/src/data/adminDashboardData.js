@@ -11,6 +11,7 @@ import {
   FaClipboardList,
   FaGaugeHigh,
   FaGear,
+  FaImages,
   FaRoad,
   FaSliders,
   FaUserGraduate,
@@ -42,6 +43,8 @@ export const adminPanel = {
       to: '/admin-dashboard/packages-settings',
       icon: FaSliders,
     },
+    { label: 'Gallery', to: '/admin-dashboard/gallery', icon: FaImages },
+    // Settings stays the last item
     { label: 'Settings', to: '/admin-dashboard/settings', icon: FaGear },
   ],
 }

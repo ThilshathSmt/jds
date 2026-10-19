@@ -125,6 +125,27 @@ const ADDED_COLUMNS = [
   },
   // The profile picture chosen on the Settings page (NULL: the default icon)
   { table: 'users', column: 'profile_picture', definition: 'VARCHAR(100) NULL AFTER responsibility' },
+  // The approval e-mail with the Driving School ID (NULL for applications approved before)
+  {
+    table: 'registration_applications',
+    column: 'approval_email_status',
+    definition: "ENUM('PENDING', 'SENDING', 'SENT', 'FAILED', 'NO_EMAIL') NULL AFTER approved_at",
+  },
+  {
+    table: 'registration_applications',
+    column: 'approval_email_attempted_at',
+    definition: 'DATETIME NULL AFTER approval_email_status',
+  },
+  {
+    table: 'registration_applications',
+    column: 'approval_email_sent_at',
+    definition: 'DATETIME NULL AFTER approval_email_attempted_at',
+  },
+  {
+    table: 'registration_applications',
+    column: 'approval_email_error',
+    definition: 'VARCHAR(300) NULL AFTER approval_email_sent_at',
+  },
 ]
 
 // ENUM columns that were given another value. The column is redefined with the full list
