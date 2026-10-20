@@ -20,7 +20,7 @@ function Layout() {
       <main>
         <Outlet />
       </main>
-      <Footer />
+      <Footer reveal={location.pathname === '/'} />
     </>
   )
 }

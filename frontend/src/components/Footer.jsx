@@ -2,13 +2,19 @@ import { FaEnvelope, FaLocationDot, FaPhone } from 'react-icons/fa6'
 import { Link } from 'react-router-dom'
 import Logo from './Logo'
 import { contactInfo, footerLinkGroups, legalLinks, socialLinks } from '../data/siteData'
+import ScrollReveal from './ScrollReveal'
 
 const headingClass = 'mb-4 text-lg font-semibold text-white'
 const linkClass = 'transition hover:text-white'
 
-function Footer() {
+function Footer({ reveal = false }) {
   return (
-    <footer id="contact" className="border-t-4 border-accent bg-ink text-gray-300">
+    <ScrollReveal
+      as="footer"
+      enabled={reveal}
+      id="contact"
+      className="border-t-4 border-accent bg-ink text-gray-300"
+    >
       <div className="container-page grid gap-10 py-14 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1.2fr]">
         <div>
           <Logo light />
@@ -78,7 +84,7 @@ function Footer() {
           </ul>
         </div>
       </div>
-    </footer>
+    </ScrollReveal>
   )
 }
 

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { FaChevronDown } from 'react-icons/fa6'
 import SectionHeading from './SectionHeading'
 import { faqs } from '../data/siteData'
+import ScrollReveal from './ScrollReveal'
 
 function FAQItem({ faq, number, isOpen, onToggle }) {
   const buttonId = `faq-button-${number}`
@@ -68,7 +69,7 @@ function FAQ() {
 
   return (
     <section id="faq" className="bg-white py-16 sm:py-20">
-      <div className="container-page">
+      <ScrollReveal className="container-page">
         <SectionHeading title="Frequently Asked Questions" />
         <ul className="mx-auto max-w-4xl border-t border-gray-200">
           {faqs.map((faq, index) => (
@@ -85,7 +86,7 @@ function FAQ() {
           This information is a general guide only. Please confirm current requirements with the
           Department of Motor Traffic or contact us.
         </p>
-      </div>
+      </ScrollReveal>
     </section>
   )
 }
