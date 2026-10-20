@@ -26,6 +26,7 @@ import {
   LESSON_TIME_LAST,
   LESSON_TIME_STEP_MINUTES,
   LESSONS_PER_CYCLE,
+  APPROVED_LESSON_LOCATIONS,
   MAX_INSTRUCTORS_PER_CYCLE,
   PRACTICAL_ATTEMPTS_PER_CYCLE,
   PROVISIONAL_TEST_DAYS,
@@ -34,7 +35,8 @@ import * as feedbackModel from '../models/feedbackModel.js'
 import * as practicalModel from '../models/practicalModel.js'
 import * as userModel from '../models/userModel.js'
 import AppError from '../utils/AppError.js'
-import { addDays, addDaysToWeekday, formatLongDate, getSchoolDate, getSchoolTime } from '../utils/dateUtils.js'
+import { addDays, addDaysToWeekday, formatLongDate, getSchoolDate, getSchoolTime, isValidDate } from '../utils/dateUtils.js'
+import { generateAutomaticLessonSchedule } from '../utils/automaticLessonSchedule.js'
 import { RECEIPT_TYPES, hasValidSignature } from '../utils/fileUtils.js'
 import { NOTIFICATION_TYPES, notify, notifyRole } from './notificationService.js'
 import { getSettings } from './settingsService.js'
@@ -45,7 +47,7 @@ const PAYMENT_NOT_FOUND = 'Payment not found.'
 const NOT_ACTIVE = 'This practical training cycle is closed: nothing in it can be changed.'
 const RESULT_RECORDED = 'The result of this practical test has already been recorded.'
 // How far ahead a lesson or test may be scheduled
-const SCHEDULE_HORIZON_DAYS = 365
+export const SCHEDULE_HORIZON_DAYS = 365
 
 const formatFee = (amount) => `LKR ${amount.toLocaleString('en-US')}`
 
@@ -380,12 +382,22 @@ export const updateLesson = async (cycleId, lessonNumber, adminId, input, now = 
       const message = "Choose one of the student's assigned instructors."
       throw new AppError(400, message, { instructorId: message })
     }
+    const [instructor] = await practicalModel.findInstructorsByIds([input.instructorId], db)
+    if (!instructor || instructor.role !== 'instructor' || instructor.status !== 'active') {
+      throw new AppError(400, 'Choose an active instructor assigned to this cycle.')
+    }
     assertSchedulable(input.date, now, 'date')
     const earliest = getEarliestLessonDate(cycle, now)
     if (input.date < earliest) {
       const message = `Choose ${formatLongDate(earliest)} or a later date: lessons start after the driving school exam pass date.`
       throw new AppError(400, message, { date: message })
     }
+    const conflicts = await practicalModel.findLessonScheduleConflicts({
+      cycleId, lessonId: lesson.id, studentId: cycle.user_id, instructorId: input.instructorId,
+      lessonDate: input.date, startTime: input.time,
+    }, db)
+    if (conflicts.student) throw new AppError(409, 'This student already has another lesson at that date and time.')
+    if (conflicts.instructor) throw new AppError(409, 'This instructor already has another lesson at that date and time.')
     await practicalModel.updateLessonSchedule(
       lesson.id,
       { instructorId: input.instructorId, lessonDate: input.date, startTime: input.time, location: input.location, updatedBy: adminId },
@@ -393,6 +405,38 @@ export const updateLesson = async (cycleId, lessonNumber, adminId, input, now = 
     )
   })
   return getCycleDetails(cycleId, now)
+}
+
+// Generate a review-only proposal against the first cycle's stored provisional test date.
+// The database's date was computed by getProvisionalTestDate (passed exam + 90 days,
+// moved to Monday on weekends). No proposal rows are persisted here.
+export const proposeAutomaticLessonSchedule = async (cycleId, now = new Date()) => {
+  const cycle = await findCycleOr404(cycleId)
+  assertActive(cycle)
+  if ((await practicalModel.findAttemptsByCycle(cycleId)).length > 0) {
+    throw new AppError(409, 'The practical test has been scheduled: the lesson schedule can no longer be changed.')
+  }
+  const lessons = await practicalModel.findLessonsByCycle(cycleId)
+  if (lessons.some((lesson) => lesson.lesson_date || lesson.start_time || lesson.location || lesson.instructor_id)) {
+    throw new AppError(409, 'This cycle already has saved lesson details. Edit those lessons instead of generating a replacement schedule.')
+  }
+  const targetDate = cycle.provisional_test_date
+  if (!targetDate || !isValidDate(targetDate)) {
+    throw new AppError(409, 'Automatic scheduling needs a valid provisional practical test date. This cycle has no test date recorded.')
+  }
+  const earliestDate = getEarliestLessonDate(cycle, now)
+  const horizonDate = addDays(getSchoolDate(now), SCHEDULE_HORIZON_DAYS)
+  const beforeTestDate = addDays(targetDate, -1)
+  const latestDate = beforeTestDate < horizonDate ? beforeTestDate : horizonDate
+  let proposedLessons
+  try {
+    proposedLessons = generateAutomaticLessonSchedule({
+      earliestDate, latestDate, count: LESSONS_PER_CYCLE,
+    })
+  } catch {
+    throw new AppError(409, `There are not 10 available dates between ${formatLongDate(earliestDate)} and the provisional practical test date (${formatLongDate(targetDate)}). No schedule was generated.`)
+  }
+  return { targetDate, earliestDate, latestDate, lessons: proposedLessons, locations: APPROVED_LESSON_LOCATIONS }
 }
 
 // Confirms the date of the cycle's next practical test, or changes the date of the one

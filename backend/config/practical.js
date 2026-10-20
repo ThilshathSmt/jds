@@ -20,6 +20,10 @@ export const LESSON_TIME_FIRST = '07:00'
 export const LESSON_TIME_LAST = '19:00'
 export const LESSON_TIME_STEP_MINUTES = 15
 
+export const AUTOMATIC_LESSON_TIME_FIRST = '08:00'
+export const AUTOMATIC_LESSON_TIME_LAST = '18:00'
+export const APPROVED_LESSON_LOCATIONS = ['Sammanthurai', 'Walathapity']
+
 const toMinutes = (time) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5))
 
 // True for '07:00', '07:15', ... '19:00'; false for '07:07', '06:45', '19:15' or anything

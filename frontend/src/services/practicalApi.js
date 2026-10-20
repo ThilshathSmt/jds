@@ -31,6 +31,9 @@ export const setCycleInstructors = async (id, instructorIds) =>
 export const updateLesson = async (id, lessonNumber, lesson) =>
   (await apiRequest(`${ADMIN}/cycles/${id}/lessons/${lessonNumber}`, { method: 'PUT', body: lesson })).cycle
 
+export const proposeAutomaticLessonSchedule = (id) =>
+  apiRequest(`${ADMIN}/cycles/${id}/lessons/automatic-proposal`, { method: 'POST' })
+
 // `decision` is { keepProvisional: true } or { testDate: 'YYYY-MM-DD' }
 export const schedulePracticalTest = async (id, decision) =>
   (await apiRequest(`${ADMIN}/cycles/${id}/test-date`, { method: 'POST', body: decision })).cycle

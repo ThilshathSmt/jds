@@ -228,6 +228,23 @@ export const updateLessonSchedule = async (id, { instructorId, lessonDate, start
   )
 }
 
+// The schema does not store lesson duration or availability blocks, so the supported
+// conflict check is an exact date/start-time collision among still-pending lessons.
+export const findLessonScheduleConflicts = async (
+  { cycleId, lessonId, studentId, instructorId, lessonDate, startTime },
+  db = pool,
+) => {
+  const [[row]] = await db.execute(`SELECT
+    EXISTS(SELECT 1 FROM practical_lessons l JOIN practical_cycles c ON c.id = l.cycle_id
+      WHERE c.user_id = ? AND c.status = 'ACTIVE' AND l.attendance = 'PENDING'
+        AND l.lesson_date = ? AND l.start_time = ? AND l.id <> ?) AS student_conflict,
+    EXISTS(SELECT 1 FROM practical_lessons l JOIN practical_cycles c ON c.id = l.cycle_id
+      WHERE l.instructor_id = ? AND c.status = 'ACTIVE' AND l.attendance = 'PENDING'
+        AND l.lesson_date = ? AND l.start_time = ? AND l.id <> ?) AS instructor_conflict`,
+  [studentId, lessonDate, startTime, lessonId, instructorId, lessonDate, startTime, lessonId])
+  return { student: Boolean(row.student_conflict), instructor: Boolean(row.instructor_conflict) }
+}
+
 export const markAttendance = async (id, { attendance, markedBy, markedAt }, db = pool) => {
   await db.execute(
     'UPDATE practical_lessons SET attendance = ?, attendance_marked_by = ?, attendance_marked_at = ? WHERE id = ?',

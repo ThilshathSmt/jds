@@ -68,6 +68,11 @@ export const updateLesson = async (req, res) => {
   sendSuccess(res, { message: `Lesson ${lessonNumber} saved.`, data: { cycle } })
 }
 
+export const proposeAutomaticLessonSchedule = async (req, res) => {
+  const proposal = await practicalService.proposeAutomaticLessonSchedule(parseId(req.params.id))
+  sendSuccess(res, { message: 'Automatic lesson schedule proposal generated.', data: proposal })
+}
+
 export const scheduleTest = async (req, res) => {
   const cycle = await practicalService.scheduleTest(parseId(req.params.id), req.user.id, validateTestScheduleInput(req.body))
   sendSuccess(res, { message: 'Practical test date confirmed. The student has been notified.', data: { cycle } })

@@ -11,6 +11,8 @@ import {
   FaCommentDots,
   FaEye,
   FaFloppyDisk,
+  FaWandMagicSparkles,
+  FaPenToSquare,
   FaMoneyBillWave,
   FaRoad,
 } from 'react-icons/fa6'
@@ -25,12 +27,14 @@ import PracticalSummary from '../../components/practical/PracticalSummary'
 import TimeSlotPicker from '../../components/practical/TimeSlotPicker'
 import { getResponsibilityLabel } from '../../data/instructorData'
 import { paymentMethods } from '../../data/registrationData'
+import { locations as schoolLocations } from '../../data/siteData'
 import {
   approvePracticalPayment,
   getPracticalCycle,
   getPracticalReceiptUrl,
   listAssignableInstructors,
   listFeedbacks,
+  proposeAutomaticLessonSchedule,
   recordPracticalResult,
   rejectPracticalPayment,
   schedulePracticalTest,
@@ -54,6 +58,11 @@ import useRefetchOnFocus from '../../utils/useRefetchOnFocus'
 const smallButton =
   'inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60'
 const getMethodLabel = (id) => paymentMethods.find((method) => method.id === id)?.label ?? id
+const lessonLocations = schoolLocations.map(({ name }) => name)
+const normalizedLocation = (value) => {
+  const approved = lessonLocations.find((location) => location.toLowerCase() === (value ?? '').toLowerCase())
+  return approved ?? value ?? ''
+}
 
 // Up to four active instructors for the student
 function InstructorsSection({ cycle, editable, onChanged, onToast }) {
@@ -142,13 +151,13 @@ function InstructorsSection({ cycle, editable, onChanged, onToast }) {
 // offers dates from `cycle.lessonRules.earliestDate` (the later of the day after the exam
 // pass date and today); the time picker only the 15-minute slots. The backend checks both.
 // A saved value that breaks today's rules is kept and flagged, never changed silently.
-function LessonRow({ cycle, lesson, editable, onChanged, onToast }) {
+function LessonRow({ cycle, lesson, editable, onChanged, onToast, onDraftChange, initialValues, automaticMode, proposalRange }) {
   const rules = cycle.lessonRules
   const [values, setValues] = useState({
-    instructorId: lesson.instructor?.id ?? '',
-    date: lesson.date ?? '',
-    time: lesson.time ?? '',
-    location: lesson.location ?? '',
+    instructorId: initialValues?.instructorId ?? lesson.instructor?.id ?? '',
+    date: initialValues?.date ?? lesson.date ?? '',
+    time: initialValues?.time ?? lesson.time ?? '',
+    location: initialValues?.location ?? normalizedLocation(lesson.location),
   })
   const [busy, setBusy] = useState(false)
   const canEdit = editable && lesson.attendance === 'PENDING'
@@ -156,20 +165,26 @@ function LessonRow({ cycle, lesson, editable, onChanged, onToast }) {
     String(values.instructorId) !== String(lesson.instructor?.id ?? '') ||
     values.date !== (lesson.date ?? '') ||
     values.time !== (lesson.time ?? '') ||
-    values.location !== (lesson.location ?? '')
+    values.location !== normalizedLocation(lesson.location)
 
-  const slots = getTimeSlots(rules)
+  useEffect(() => onDraftChange(lesson.lessonNumber, dirty), [dirty, lesson.lessonNumber, onDraftChange])
+
+  const timeRules = automaticMode ? { ...rules, timeFirst: '08:00', timeLast: '18:00' } : rules
+  const slots = getTimeSlots(timeRules)
+  const latestAllowedDate = automaticMode ? proposalRange?.latestDate : rules.latestDate
   const dateProblem =
-    values.date && (values.date < rules.earliestDate || values.date > rules.latestDate)
-      ? `Choose a date from ${formatDayShort(rules.earliestDate)}.`
+    values.date && (values.date < rules.earliestDate || values.date > latestAllowedDate)
+      ? automaticMode
+        ? `Choose a date from ${formatDayShort(rules.earliestDate)} through ${formatDayShort(latestAllowedDate)} (before the provisional test date).`
+        : `Choose a date from ${formatDayShort(rules.earliestDate)} through ${formatDayShort(rules.latestDate)}.`
       : ''
   const timeProblem = values.time && !slots.includes(values.time) ? 'Choose a time from the list.' : ''
 
   const change = (name) => (event) => setValues((current) => ({ ...current, [name]: event.target.value }))
   const save = async () => {
     const problem =
-      !values.instructorId || !values.date || !values.time
-        ? 'choose an instructor, a date and a time.'
+      !values.instructorId || !values.date || !values.time || !values.location
+        ? 'choose an instructor, a date, a time and a location.'
         : dateProblem || timeProblem
     if (problem) {
       onToast({ variant: 'error', message: `Lesson ${lesson.lessonNumber}: ${problem}` })
@@ -178,6 +193,7 @@ function LessonRow({ cycle, lesson, editable, onChanged, onToast }) {
     setBusy(true)
     try {
       onChanged(await updateLesson(cycle.id, lesson.lessonNumber, { ...values, instructorId: Number(values.instructorId) }))
+      onDraftChange(lesson.lessonNumber, false)
       onToast({ variant: 'success', message: `Lesson ${lesson.lessonNumber} saved.` })
     } catch (saveError) {
       onToast({ variant: 'error', message: `Lesson ${lesson.lessonNumber}: ${saveError.message}` })
@@ -189,7 +205,11 @@ function LessonRow({ cycle, lesson, editable, onChanged, onToast }) {
   const id = `lesson-${lesson.lessonNumber}`
   return (
     <tr className="align-top" data-lesson-number={lesson.lessonNumber}>
-      <td className="px-3 py-3 font-semibold whitespace-nowrap text-ink">Lesson {lesson.lessonNumber}</td>
+      <td className="px-3 py-3 font-semibold whitespace-nowrap text-ink">
+        Lesson {lesson.lessonNumber}
+        {automaticMode && !lesson.date && <span className="mt-1 block text-xs font-medium text-amber-700">Unsaved proposal</span>}
+        {lesson.date && <span className="mt-1 block text-xs font-medium text-emerald-700">Saved</span>}
+      </td>
       <td className="px-3 py-3">
         <label htmlFor={`${id}-date`} className="sr-only">Date</label>
         <input
@@ -197,7 +217,7 @@ function LessonRow({ cycle, lesson, editable, onChanged, onToast }) {
           type="date"
           value={values.date}
           min={canEdit ? rules.earliestDate : undefined}
-          max={canEdit ? rules.latestDate : undefined}
+          max={canEdit ? latestAllowedDate : undefined}
           disabled={!canEdit}
           onChange={change('date')}
           aria-invalid={canEdit && dateProblem ? true : undefined}
@@ -210,7 +230,7 @@ function LessonRow({ cycle, lesson, editable, onChanged, onToast }) {
         <TimeSlotPicker
           id={`${id}-time`}
           value={values.time}
-          rules={rules}
+          rules={timeRules}
           disabled={!canEdit}
           invalid={canEdit && Boolean(timeProblem)}
           onChange={(time) => setValues((current) => ({ ...current, time }))}
@@ -219,13 +239,16 @@ function LessonRow({ cycle, lesson, editable, onChanged, onToast }) {
       </td>
       <td className="px-3 py-3">
         <label htmlFor={`${id}-location`} className="sr-only">Location</label>
-        <input id={`${id}-location`} type="text" maxLength={150} value={values.location} disabled={!canEdit} onChange={change('location')} placeholder="Location" className="form-input !py-1.5 w-40" />
+        <select id={`${id}-location`} value={values.location} disabled={!canEdit} onChange={change('location')} className="form-input !py-1.5 w-40">
+          <option value="">Select location</option>
+          {lessonLocations.map((location) => <option key={location} value={location}>{location}</option>)}
+        </select>
       </td>
       <td className="px-3 py-3">
         <label htmlFor={`${id}-instructor`} className="sr-only">Instructor</label>
         <select id={`${id}-instructor`} value={values.instructorId} disabled={!canEdit} onChange={change('instructorId')} className="form-input !py-1.5 w-44">
-          <option value="">Select...</option>
-          {cycle.instructors.map((instructor) => (
+          <option value="">Select Instructor</option>
+          {cycle.instructors.filter((instructor) => instructor.status === 'active').map((instructor) => (
             <option key={instructor.id} value={instructor.id}>
               {instructor.name} ({getResponsibilityLabel(instructor.responsibility) ?? 'no vehicle'})
             </option>
@@ -244,7 +267,7 @@ function LessonRow({ cycle, lesson, editable, onChanged, onToast }) {
         {canEdit && (
           <button type="button" onClick={save} disabled={busy || !dirty} className={`${smallButton} bg-brand text-white hover:bg-brand-dark`}>
             <FaFloppyDisk aria-hidden="true" />
-            {busy ? 'Saving...' : 'Save'}
+          {busy ? 'Saving...' : 'Save lesson'}
           </button>
         )}
       </td>
@@ -469,7 +492,20 @@ function LessonDetails() {
   const [feedbacks, setFeedbacks] = useState([])
   const [error, setError] = useState('')
   const [toast, setToast] = useState(null)
+  const [scheduleMode, setScheduleMode] = useState('manual')
+  const [proposal, setProposal] = useState(null)
+  const [proposalVersion, setProposalVersion] = useState(0)
+  const [unsavedLessons, setUnsavedLessons] = useState(() => new Set())
+  const [generatingSchedule, setGeneratingSchedule] = useState(false)
   const closeToast = useCallback(() => setToast(null), [])
+  const updateDraftState = useCallback((lessonNumber, dirty) => {
+    setUnsavedLessons((current) => {
+      const next = new Set(current)
+      if (dirty) next.add(lessonNumber)
+      else next.delete(lessonNumber)
+      return next
+    })
+  }, [])
 
   const refetch = useCallback(() => {
     Promise.all([getPracticalCycle(cycleId), listFeedbacks({ cycleId })])
@@ -515,6 +551,31 @@ function LessonDetails() {
 
   // The schedule is fixed once the practical test date is confirmed
   const editable = cycle.status === 'ACTIVE' && cycle.attempts.length === 0
+  const confirmDiscardDrafts = () =>
+    unsavedLessons.size === 0 || window.confirm('Discard unsaved lesson changes? Saved lesson details will be kept.')
+  const switchToManual = () => {
+    if (scheduleMode === 'manual') return
+    if (!confirmDiscardDrafts()) return
+    setScheduleMode('manual')
+    setProposal(null)
+    setUnsavedLessons(new Set())
+  }
+  const generateSchedule = async () => {
+    if (generatingSchedule || !confirmDiscardDrafts()) return
+    setGeneratingSchedule(true)
+    try {
+      const nextProposal = await proposeAutomaticLessonSchedule(cycle.id)
+      setProposal(nextProposal)
+      setScheduleMode('automatic')
+      setUnsavedLessons(new Set())
+      setProposalVersion((version) => version + 1)
+      setToast({ variant: 'success', message: `Generated 10 proposed lessons before ${formatDay(nextProposal.targetDate)}. Review each lesson and assign an instructor before saving.` })
+    } catch (proposalError) {
+      setToast({ variant: 'error', message: proposalError.message })
+    } finally {
+      setGeneratingSchedule(false)
+    }
+  }
 
   return (
     <>
@@ -535,15 +596,29 @@ function LessonDetails() {
       <InstructorsSection key={`instructors-${cycle.instructors.map((i) => i.id).join()}`} cycle={cycle} editable={editable} onChanged={setCycle} onToast={setToast} />
 
       <DashboardSection title="Lesson Schedule (10 lessons)" icon={FaCarSide}>
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          <button type="button" onClick={generateSchedule} disabled={!editable || generatingSchedule} aria-pressed={scheduleMode === 'automatic'} className={`btn !rounded-lg !px-4 !py-2 ${scheduleMode === 'automatic' ? 'btn-primary' : 'border border-brand bg-white text-brand hover:bg-brand-soft'} disabled:cursor-not-allowed disabled:opacity-60`}>
+            <FaWandMagicSparkles aria-hidden="true" />
+            {generatingSchedule ? 'Generating...' : 'Schedule Automatically'}
+          </button>
+          <button type="button" onClick={switchToManual} disabled={!editable} aria-pressed={scheduleMode === 'manual'} className={`btn !rounded-lg !px-4 !py-2 ${scheduleMode === 'manual' ? 'btn-primary' : 'border border-brand bg-white text-brand hover:bg-brand-soft'} disabled:cursor-not-allowed disabled:opacity-60`}>
+            <FaPenToSquare aria-hidden="true" />
+            Schedule Manually
+          </button>
+          <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700" data-schedule-mode={scheduleMode}>
+            {scheduleMode === 'automatic' ? 'Automatic mode · review proposal' : 'Manual mode'}
+          </span>
+        </div>
         {editable && cycle.instructors.length === 0 && (
-          <p className="mb-4 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900">Assign instructors first, then schedule each lesson.</p>
+          <p className="mb-4 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900">Automatic proposals leave instructors unassigned. Add eligible instructors in the section above, then select an instructor for each lesson before saving.</p>
         )}
         {!editable && <p className="mb-4 text-sm text-gray-600">The schedule can no longer be changed for this cycle.</p>}
         {editable && (
           <p className="mb-4 text-sm text-gray-600">
             Lessons can be scheduled from {formatDay(cycle.lessonRules.earliestDate)}
             {cycle.examDate ? ` (the driving school exam was passed on ${formatDayShort(cycle.examDate)})` : ''}, at
-            15-minute times between 7:00 AM and 7:00 PM. Choose a time and press OK, then Save the lesson.
+            {' '}{scheduleMode === 'automatic' ? `15-minute times from 8:00 AM to 6:00 PM and before the stored provisional test date (${formatDay(proposal?.targetDate)}).` : '15-minute times between 7:00 AM and 7:00 PM.'}
+            {' '}Each lesson is saved individually after review.
           </p>
         )}
         <div className="overflow-x-auto rounded-xl border border-gray-200">
@@ -559,12 +634,16 @@ function LessonDetails() {
             <tbody className="divide-y divide-gray-100">
               {cycle.lessons.map((lesson) => (
                 <LessonRow
-                  key={`${lesson.id}-${lesson.date}-${lesson.time}-${lesson.instructor?.id}-${lesson.attendance}-${cycle.instructors.length}`}
+                  key={`${lesson.id}-${lesson.date}-${lesson.time}-${lesson.instructor?.id}-${lesson.attendance}-${cycle.instructors.length}-${scheduleMode}-${proposalVersion}`}
                   cycle={cycle}
                   lesson={lesson}
                   editable={editable}
                   onChanged={setCycle}
                   onToast={setToast}
+                  onDraftChange={updateDraftState}
+                  initialValues={scheduleMode === 'automatic' && !lesson.date ? proposal?.lessons.find((item) => item.lessonNumber === lesson.lessonNumber) : undefined}
+                  automaticMode={scheduleMode === 'automatic'}
+                  proposalRange={proposal ? { latestDate: proposal.latestDate } : null}
                 />
               ))}
             </tbody>

@@ -3,7 +3,7 @@ import {
   SELECTABLE_EXAM_WEEKDAYS,
   formatExamWeekdays,
 } from '../config/licenceExam.js'
-import { isLessonTimeSlot } from '../config/practical.js'
+import { APPROVED_LESSON_LOCATIONS, isLessonTimeSlot } from '../config/practical.js'
 import { PAYMENT_METHODS } from '../config/packages.js'
 import AppError from './AppError.js'
 import { TOKEN_PATTERN } from './tokenUtils.js'
@@ -555,7 +555,7 @@ export const validateInstructorIdsInput = (body = {}) => {
   return { instructorIds: ids }
 }
 
-// One lesson's schedule: date, time and instructor required, location optional. The time
+// One lesson's schedule: date, time, location and instructor required. The time
 // must be one of the 15-minute slots from 07:00 to 19:00; whether the date is allowed for
 // the student is checked by the service.
 export const validateLessonInput = (body = {}) => {
@@ -563,7 +563,7 @@ export const validateLessonInput = (body = {}) => {
     instructorId: asPositiveId(body.instructorId),
     date: asTrimmedString(body.date),
     time: asTrimmedString(body.time) || null,
-    location: asTrimmedString(body.location) || null,
+    location: asTrimmedString(body.location),
   }
   const errors = {}
   if (!input.instructorId) errors.instructorId = 'Choose the instructor for this lesson.'
@@ -572,8 +572,13 @@ export const validateLessonInput = (body = {}) => {
   else if (!isLessonTimeSlot(input.time)) {
     errors.time = 'Choose a time between 7:00 AM and 7:00 PM in 15-minute steps (for example 7:15 AM).'
   }
-  if (input.location && input.location.length > LOCATION_MAX_LENGTH) {
+  if (!input.location) errors.location = 'Choose an approved lesson location.'
+  else if (input.location.length > LOCATION_MAX_LENGTH) {
     errors.location = `Location must be ${LOCATION_MAX_LENGTH} characters or fewer.`
+  } else {
+    const approved = APPROVED_LESSON_LOCATIONS.find((location) => location.toLowerCase() === input.location.toLowerCase())
+    if (!approved) errors.location = `Choose ${APPROVED_LESSON_LOCATIONS.join(' or ')}.`
+    else input.location = approved
   }
   throwIfInvalid(errors)
   return input
