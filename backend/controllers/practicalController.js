@@ -12,6 +12,7 @@ import {
   parseId,
   validateAttendanceInput,
   validateFeedbackFilters,
+  validateInstructorLessonFilters,
   validateFeedbackInput,
   validateInstructorIdsInput,
   validateLessonInput,
@@ -135,8 +136,13 @@ export const getOwnPaymentReceipt = async (req, res) =>
 // ---- Instructor (/api/instructor)
 
 export const listInstructorLessons = async (req, res) => {
-  const lessons = await practicalService.listInstructorLessons(req.user)
-  sendSuccess(res, { message: 'Your lessons', data: { lessons } })
+  const data = await practicalService.listInstructorLessons(req.user, validateInstructorLessonFilters(req.query))
+  sendSuccess(res, { message: 'Your lessons', data })
+}
+
+export const listEligibleInstructorStudents = async (req, res) => {
+  const drivingSchoolIds = await practicalService.listEligibleInstructorStudentIds(req.user)
+  sendSuccess(res, { message: 'Eligible students', data: { drivingSchoolIds } })
 }
 
 export const markAttendance = async (req, res) => {

@@ -74,7 +74,15 @@ export const submitPracticalPayment = ({ paymentMethod, receipt }) => {
 
 // ---- Instructor
 
-export const listMyLessons = async () => (await apiRequest(`${INSTRUCTOR}/lessons`)).lessons
+export const listMyLessons = async (filters = {}) => {
+  const params = new URLSearchParams()
+  for (const [key, value] of Object.entries(filters)) if (value) params.set(key, value)
+  const query = params.toString()
+  return apiRequest(`${INSTRUCTOR}/lessons${query ? `?${query}` : ''}`)
+}
+
+export const listEligibleInstructorDrivingSchoolIds = async () =>
+  (await apiRequest(`${INSTRUCTOR}/eligible-students`)).drivingSchoolIds
 
 export const markLessonAttendance = async (lessonId, attendance) =>
   (await apiRequest(`${INSTRUCTOR}/lessons/${lessonId}/attendance`, { method: 'PUT', body: { attendance } })).lesson

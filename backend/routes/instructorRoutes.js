@@ -12,6 +12,7 @@ router.get('/dashboard', instructorDashboard)
 
 // Lessons assigned to the signed-in instructor, and their attendance
 router.get('/lessons', practicalController.listInstructorLessons)
+router.get('/eligible-students', practicalController.listEligibleInstructorStudents)
 router.put('/lessons/:id/attendance', practicalController.markAttendance)
 
 // Feedback on the students the signed-in instructor teaches (their own feedback only)
