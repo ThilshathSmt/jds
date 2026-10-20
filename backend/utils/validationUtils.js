@@ -543,6 +543,21 @@ export const validatePracticalStatusFilter = (value) => {
   return status
 }
 
+// Filters for an instructor's own lessons. `studentId` is the public Driving School ID.
+export const validateInstructorLessonFilters = (query = {}) => {
+  const filters = {
+    studentId: asTrimmedString(query.studentId).slice(0, 50).toUpperCase() || undefined,
+    studentName: asTrimmedString(query.studentName).replace(/\s+/g, ' ').slice(0, 100) || undefined,
+    date: asTrimmedString(query.date) || undefined,
+    attendanceStatus: asTrimmedString(query.attendanceStatus).toUpperCase() || undefined,
+  }
+  if (filters.date && !isValidDate(filters.date)) throw new AppError(400, 'Lesson date must be YYYY-MM-DD.')
+  if (filters.attendanceStatus && !['PENDING', 'ATTENDED', 'ABSENT'].includes(filters.attendanceStatus)) {
+    throw new AppError(400, 'Attendance status must be PENDING, ATTENDED, or ABSENT.')
+  }
+  return filters
+}
+
 // The instructors assigned to a student: a list of distinct user ids (the service checks
 // the limit of four and that they are active instructors)
 export const validateInstructorIdsInput = (body = {}) => {

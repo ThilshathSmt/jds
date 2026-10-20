@@ -198,17 +198,63 @@ export const findLessonById = async (id, db = pool, { forUpdate = false } = {}) 
 }
 
 // Every lesson assigned to the instructor, with its student and cycle, soonest first
-export const findLessonsByInstructor = async (instructorId, db = pool) => {
+const escapeLike = (value) => value.replace(/[\\%_]/g, (character) => `\\${character}`)
+
+export const findLessonsByInstructor = async (instructorId, filters = {}, db = pool) => {
+  const conditions = ['l.instructor_id = ?']
+  const params = [instructorId]
+  if (filters.studentId) {
+    conditions.push('UPPER(su.driving_school_id) LIKE ?')
+    params.push(`%${escapeLike(filters.studentId)}%`)
+  }
+  if (filters.studentName) {
+    conditions.push('su.name LIKE ?')
+    params.push(`%${escapeLike(filters.studentName)}%`)
+  }
+  if (filters.date) {
+    conditions.push('l.lesson_date = ?')
+    params.push(filters.date)
+  }
+  if (filters.attendanceStatus) {
+    conditions.push('l.attendance = ?')
+    params.push(filters.attendanceStatus)
+  }
   const [rows] = await db.execute(
     `SELECT ${LESSON_COLUMNS}, c.status AS cycle_status, c.cycle_number, c.user_id AS student_id,
             su.name AS student_name, su.driving_school_id AS student_driving_school_id,
             (SELECT COUNT(*) FROM practical_test_attempts t WHERE t.cycle_id = c.id) AS attempts_scheduled
        FROM ${LESSON_FROM} JOIN practical_cycles c ON c.id = l.cycle_id JOIN users su ON su.id = c.user_id
-      WHERE l.instructor_id = ?
+        WHERE ${conditions.join(' AND ')}
       ORDER BY l.lesson_date IS NULL, l.lesson_date, l.start_time, su.name, l.lesson_number`,
-    [instructorId],
+    params,
   )
   return rows.map((row) => ({ ...row, attempts_scheduled: Number(row.attempts_scheduled) }))
+}
+
+export const countLessonsByInstructor = async (instructorId, db = pool) => {
+  const [rows] = await db.execute('SELECT COUNT(*) AS n FROM practical_lessons WHERE instructor_id = ?', [instructorId])
+  return Number(rows[0].n)
+}
+
+// The dropdown only includes IDs for students who have an authoritative PASSED driving
+// school exam result and at least one lesson assigned to this signed-in instructor.
+export const findEligibleStudentIdsForInstructor = async (instructorId, db = pool) => {
+  const [rows] = await db.execute(
+    `SELECT DISTINCT su.driving_school_id
+       FROM practical_lessons l
+       JOIN practical_cycles c ON c.id = l.cycle_id
+       JOIN users su ON su.id = c.user_id
+      WHERE l.instructor_id = ?
+        AND su.role = 'student' AND su.status = 'active' AND su.locked_at IS NULL
+        AND EXISTS (
+          SELECT 1 FROM licence_exam_attempts a
+          JOIN practical_cycles passed_cycle ON passed_cycle.source_attempt_id = a.id
+           WHERE a.user_id = su.id AND a.result = 'PASSED'
+        )
+      ORDER BY su.driving_school_id`,
+    [instructorId],
+  )
+  return rows.map((row) => row.driving_school_id)
 }
 
 export const countLessonsOfInstructor = async (cycleId, instructorId, db = pool) => {

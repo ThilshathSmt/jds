@@ -715,8 +715,10 @@ const attendanceBlock = (row, now) => {
   return null
 }
 
-export const listInstructorLessons = async (instructor, now = new Date()) =>
-  (await practicalModel.findLessonsByInstructor(instructor.id)).map((row) => {
+export const listInstructorLessons = async (instructor, filters = {}, now = new Date()) => {
+  const rows = await practicalModel.findLessonsByInstructor(instructor.id, filters)
+  const totalAssigned = await practicalModel.countLessonsByInstructor(instructor.id)
+  const lessons = rows.map((row) => {
     const block = attendanceBlock(row, now)
     return {
       ...toLesson(row),
@@ -728,6 +730,11 @@ export const listInstructorLessons = async (instructor, now = new Date()) =>
       attendanceBlockedReason: block,
     }
   })
+  return { lessons, totalAssigned }
+}
+
+export const listEligibleInstructorStudentIds = (instructor) =>
+  practicalModel.findEligibleStudentIdsForInstructor(instructor.id)
 
 export const markAttendance = async (lessonId, instructor, { attendance }, now = new Date()) => {
   await withTransaction(async (db) => {
@@ -745,5 +752,5 @@ export const markAttendance = async (lessonId, instructor, { attendance }, now =
     }
     await practicalModel.markAttendance(lessonId, { attendance, markedBy: instructor.id, markedAt: now }, db)
   })
-  return (await listInstructorLessons(instructor, now)).find((lesson) => lesson.id === lessonId)
+  return (await listInstructorLessons(instructor, {}, now)).lessons.find((lesson) => lesson.id === lessonId)
 }
