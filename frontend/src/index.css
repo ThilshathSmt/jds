@@ -84,10 +84,80 @@
   .btn-outline {
     @apply border-2 border-brand bg-white text-brand hover:bg-brand hover:text-white;
   }
+
+  /* Home page scroll reveals start only after hydration and an observer is available,
+     so content remains visible if JavaScript or IntersectionObserver cannot run. */
+  .scroll-reveal {
+    opacity: 0;
+    transform: translateY(18px);
+    transition:
+      opacity 650ms ease,
+      transform 650ms cubic-bezier(0.2, 0.7, 0.2, 1);
+    transition-delay: var(--reveal-delay, 0ms);
+  }
+
+  .scroll-reveal.is-revealed {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .hero-parallax__illustration,
+  .hero-parallax__copy {
+    will-change: transform;
+  }
+
+  .hero-parallax__illustration {
+    transform: translate3d(0, var(--hero-parallax, 0px), 0);
+  }
+
+  .hero-parallax__copy {
+    transform: translate3d(0, var(--hero-copy-parallax, 0px), 0);
+  }
+
+  .hero-parallax__shape {
+    position: absolute;
+    z-index: 0;
+    display: block;
+    border-radius: 9999px;
+    pointer-events: none;
+    background: rgb(23 105 224 / 7%);
+    will-change: transform;
+  }
+
+  .hero-parallax__shape--one {
+    top: 12%;
+    right: -4rem;
+    width: clamp(9rem, 23vw, 20rem);
+    aspect-ratio: 1;
+    transform: translate3d(0, calc(var(--hero-parallax, 0px) * -0.55), 0);
+  }
+
+  .hero-parallax__shape--two {
+    bottom: 8%;
+    left: -5rem;
+    width: clamp(8rem, 18vw, 16rem);
+    aspect-ratio: 1;
+    background: rgb(0 166 199 / 8%);
+    transform: translate3d(0, calc(var(--hero-parallax, 0px) * 0.35), 0);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
+  }
+
+  .scroll-reveal,
+  .scroll-reveal.is-revealed {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .hero-parallax__illustration,
+  .hero-parallax__copy,
+  .hero-parallax__shape {
+    transform: none;
+    will-change: auto;
   }
 }

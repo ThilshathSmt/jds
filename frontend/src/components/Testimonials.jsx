@@ -1,6 +1,7 @@
 import { FaQuoteLeft, FaStar } from 'react-icons/fa6'
 import SectionHeading from './SectionHeading'
 import { testimonials } from '../data/siteData'
+import ScrollReveal from './ScrollReveal'
 
 const MAX_RATING = 5
 
@@ -38,12 +39,14 @@ function Testimonials() {
   return (
     <section id="testimonials" className="bg-white py-16 sm:py-20">
       <div className="container-page">
-        <SectionHeading eyebrow="Student Feedback" title="What Our Students Say" />
+        <ScrollReveal>
+          <SectionHeading eyebrow="Student Feedback" title="What Our Students Say" />
+        </ScrollReveal>
         <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {testimonials.map((testimonial) => (
-            <li key={testimonial.initials}>
+          {testimonials.map((testimonial, index) => (
+            <ScrollReveal as="li" key={testimonial.initials} delay={index * 80}>
               <TestimonialCard {...testimonial} />
-            </li>
+            </ScrollReveal>
           ))}
         </ul>
       </div>

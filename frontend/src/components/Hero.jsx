@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { useEffect, useRef } from 'react'
 import { FaArrowRight, FaCircleCheck } from 'react-icons/fa6'
 // TODO: Replace with an official Jeslan Driving School image if available
 import heroImage from '../assets/images/hero-driving.svg'
@@ -6,10 +7,40 @@ import heroImage from '../assets/images/hero-driving.svg'
 const highlights = ['Experienced instructors', 'Theory & practical lessons', 'Cars & motorcycles']
 
 function Hero() {
+  const heroRef = useRef(null)
+
+  useEffect(() => {
+    const section = heroRef.current
+    if (!section || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return undefined
+    let frame = null
+    const update = () => {
+      if (frame !== null) return
+      frame = window.requestAnimationFrame(() => {
+        frame = null
+        const rect = section.getBoundingClientRect()
+        const progress = Math.max(-1, Math.min(1, -rect.top / Math.max(rect.height, 1)))
+        section.style.setProperty('--hero-parallax', `${progress * 24}px`)
+        section.style.setProperty('--hero-copy-parallax', `${progress * 10}px`)
+      })
+    }
+    window.addEventListener('scroll', update, { passive: true })
+    update()
+    return () => {
+      window.removeEventListener('scroll', update)
+      if (frame !== null) window.cancelAnimationFrame(frame)
+    }
+  }, [])
+
   return (
-    <section id="home" className="bg-gradient-to-b from-white to-brand-soft/60">
-      <div className="container-page grid items-center gap-10 py-12 sm:py-16 lg:grid-cols-2 lg:py-20">
-        <div className="text-center lg:text-left">
+    <section
+      ref={heroRef}
+      id="home"
+      className="hero-parallax relative isolate overflow-hidden bg-gradient-to-b from-white to-brand-soft/60"
+    >
+      <span className="hero-parallax__shape hero-parallax__shape--one" aria-hidden="true" />
+      <span className="hero-parallax__shape hero-parallax__shape--two" aria-hidden="true" />
+      <div className="container-page relative z-10 grid items-center gap-10 py-12 sm:py-16 lg:grid-cols-2 lg:py-20">
+        <div className="hero-parallax__copy text-center lg:text-left">
           <p className="mb-4 inline-block rounded-full bg-brand-soft px-4 py-1.5 text-sm font-semibold text-brand">
             Jeslan Driving School
           </p>
@@ -44,7 +75,7 @@ function Hero() {
         <img
           src={heroImage}
           alt="Learner car with an L plate driving past road signs"
-          className="mx-auto w-full max-w-xl"
+          className="hero-parallax__illustration mx-auto w-full max-w-xl"
         />
       </div>
     </section>
