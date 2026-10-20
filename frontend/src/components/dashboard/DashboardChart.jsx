@@ -1,7 +1,7 @@
 // Simple visual summary without a chart library: a stacked bar plus one row per item.
 // `data` is [{ label, value, color }] where `color` is a Tailwind background class.
-function DashboardChart({ data, totalLabel = 'Total' }) {
-  const total = data.reduce((sum, item) => sum + item.value, 0)
+function DashboardChart({ data, total: suppliedTotal, totalLabel = 'Total' }) {
+  const total = suppliedTotal ?? data.reduce((sum, item) => sum + item.value, 0)
   const percent = (value) => (total ? (value / total) * 100 : 0)
 
   return (
